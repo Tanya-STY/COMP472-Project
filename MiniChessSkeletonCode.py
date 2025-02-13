@@ -6,6 +6,12 @@ import argparse
 class MiniChess:
     def __init__(self):
         self.current_game_state = self.init_board()
+        self.playmode = playmode
+        self.turn_count = 0
+        self.piece_count_history = []
+        self.game_over = False
+        self.result = None
+        self.move_count = 0
 
     """
     Initialize the board
@@ -68,6 +74,31 @@ class MiniChess:
         # Return a list of all the valid moves.
         # Implement basic move validation
         # Check for out-of-bounds, correct turn, move legality, etc
+
+        valid_moves = []
+        current_player = game_state['turn']
+        opponent_color = 'b' if current_player == 'w' else 'w'
+        board = game_state["board"]
+        rows, cols = 5, 5
+
+        # Nested loop to iterate through the board to find all valid moves
+        for row in range(rows):
+            for col in range(cols):
+                piece = board[row][col]
+                if piece == '.' or piece[0] != ('w' if current_player == 'white' else 'b'):
+                    continue
+                piece_type = piece[1]
+
+                if piece_type == 'K': # King
+                    # King can move one square in any direction
+                    directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+                    for dir_row, dir_col in directions:
+                        new_row, new_col = row + dir_row, col + dir_col
+                        if 0 <= new_row < rows and 0 <= new_col < cols:
+                            target = board[new_row][new_col]
+                            if target == '.' or target[0] == opponent_color:
+                                valid_moves.append(((row, col), (new_row, new_col)))
+
         return
 
     """
