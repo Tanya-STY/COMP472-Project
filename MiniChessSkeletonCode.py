@@ -117,6 +117,25 @@ class MiniChess:
                             else:
                                 break
                             step += 1
+
+                elif piece_type == 'B': # Bishop
+                    # Bishop can move any number of squares diagonally
+                    directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+                    for dir_row, dir_col in directions:
+                        step = 1
+                        while True:
+                            new_row, new_col = row + step * dir_row, col + step * dir_col
+                            if not (0 <= new_row < rows and 0 <= new_col < cols):
+                                break
+                            target = board[new_row][new_col]
+                            if target == '.':
+                                valid_moves.append(((row, col), (new_row, new_col)))
+                            elif target[0] == opponent_color:
+                                valid_moves.append(((row, col), (new_row, new_col)))
+                                break
+                            else:
+                                break
+                            step += 1
                         
 
         return
