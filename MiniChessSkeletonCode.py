@@ -60,7 +60,7 @@ class MiniChess:
     """
     def is_valid_move(self, game_state, move):
         # Check if move is in list of valid moves
-        return True
+        return move in self.valid_moves(game_state)
 
     """
     Returns a list of valid moves
@@ -183,15 +183,45 @@ class MiniChess:
         - game_state:   dictionary | Dictionary representing the modified game state
     """
     def make_move(self, game_state, move):
-        start = move[0]
-        end = move[1]
+        # start = move[0]
+        # end = move[1]
+        start, end = move
         start_row, start_col = start
         end_row, end_col = end
         piece = game_state["board"][start_row][start_col]
         game_state["board"][start_row][start_col] = '.'
         game_state["board"][end_row][end_col] = piece
-        game_state["turn"] = "black" if game_state["turn"] == "white" else "white"
+        # game_state["turn"] = "black" if game_state["turn"] == "white" else "white"
 
+        # check king capture
+        opponent = 'b' if game_state["turn"] == 'white' else 'w'
+        king_piece = any(cell == opponent + 'K' for row in game_state["board"] for cell in row)
+        if not king_piece:
+            self.game_over = True
+            self.result = f"{game_state['turn'].capitalize()} wins by capturing the king"
+        
+        # pawn promotion
+        if piece[1] == 'p':
+            if (piece[0] == 'w' and end_row == 0) or (piece[0] == 'b' and end_row == 4):
+                game_state["board"][end_row][end_col] = piece[0] + 'Q'
+        
+        # toggle turn and check for full turn completion
+        game_state["turn"] = 'b' if game_state["turn"] == 'white' else 'w'
+        if game_state["turn"] == 'white':  # Black just moved
+            self.turn_count += 1
+            current_count = self.count_pieces(game_state["board"])
+            self.piece_count_history.append(current_count)
+            # Check max turns
+            if self.turn_count >= self.maxturns:
+                self.game_over = True
+                self.result = "Draw by reaching max turns"
+            # Check 10-turn draw
+            if len(self.piece_count_history) >= 10:
+                last_ten = self.piece_count_history[-10:]
+                if all(x == last_ten[0] for x in last_ten):
+                    self.game_over = True
+                    self.result = "Draw by 10 turns with no captures"
+                    
         return game_state
 
     """
