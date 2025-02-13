@@ -136,7 +136,16 @@ class MiniChess:
                             else:
                                 break
                             step += 1
-                        
+
+                elif piece_type == 'N': # Knight
+                    # Knight can move in an L-shape (2 squares in one direction, 1 square perpendicular)
+                    directions = [(-2, -1), (-2, 1), (2, -1), (2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2)]
+                    for dir_row, dir_col in directions:
+                        new_row, new_col = row + dir_row, col + dir_col
+                        if 0 <= new_row < rows and 0 <= new_col < cols:
+                            target = board[new_row][new_col]
+                            if target == '.' or target[0] == opponent_color:
+                                valid_moves.append(((row, col), (new_row, new_col)))           
 
         return
 
