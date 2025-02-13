@@ -145,9 +145,33 @@ class MiniChess:
                         if 0 <= new_row < rows and 0 <= new_col < cols:
                             target = board[new_row][new_col]
                             if target == '.' or target[0] == opponent_color:
-                                valid_moves.append(((row, col), (new_row, new_col)))           
+                                valid_moves.append(((row, col), (new_row, new_col)))
 
-        return
+                elif piece_type == 'p': # Pawn   
+                    # Pawn can move one square forward
+                    if current_player == 'white':
+                        # white pawn moves up the board
+                        if row - 1 >= 0 and board[ro - 1][col] == '.':
+                            valid_moves.append(((row, col), (row-1, col)))
+                        
+                        # white pawn captures diagonally
+                        for dir_col in [-1, 1]:
+                            if col + dir_col < 0 or col + dir_col >= cols:
+                                continue
+                            if row - 1 >= 0 and board[row-1][col+dir_col][0] != '.' and board[row - 1][col + dir_col][0] == 'b':
+                                valid_moves.append(((row, col), (row - 1, col + dir_col)))
+                    
+                    else:
+                    # Black pawn moves forward (down the board)
+                        if row + 1 < rows and board[row + 1][col] == '.':
+                            valid_moves.append(((row, col), (row + 1, col)))
+                        # Black pawn captures diagonally
+                        for dc in [-1, 1]:
+                            if col + dc < 0 or col + dc >= cols:
+                                continue
+                            if row + 1 < rows and board[row + 1][col + dc] != '.' and board[row + 1][col + dc][0] == 'w':
+                                valid_moves.append(((row, col), (row + 1, col + dc)))
+        return valid_moves
 
     """
     Modify to board to make a move
