@@ -98,6 +98,26 @@ class MiniChess:
                             target = board[new_row][new_col]
                             if target == '.' or target[0] == opponent_color:
                                 valid_moves.append(((row, col), (new_row, new_col)))
+                
+                elif piece_type == 'Q': # Queen
+                    # Queen can move any number of squares in any direction
+                    directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+                    for dir_row, dir_col in directions:
+                        step = 1
+                        while True:
+                            new_row, new_col = row + step * dir_row, col + step * dir_col
+                            if not (0 <= new_row < rows and 0 <= new_col < cols):
+                                break
+                            target = board[new_row][new_col]
+                            if target == '.':
+                                valid_moves.append(((row, col), (new_row, new_col)))
+                            elif target[0] == opponent_color:
+                                valid_moves.append(((row, col), (new_row, new_col)))
+                                break
+                            else:
+                                break
+                            step += 1
+                        
 
         return
 
