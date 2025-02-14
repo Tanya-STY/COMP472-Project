@@ -1,0 +1,4 @@
+Fastest to capture King
+1. B2 B3
+2. A5 A4
+3. B3 A4
