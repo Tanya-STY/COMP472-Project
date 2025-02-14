@@ -5,7 +5,15 @@ import argparse
 import os
 
 class MiniChess:
+    """
+        Initialize MiniChess game instance
+
+        Args:
+            - playmode: string | Play mode: H-H (for now, only Human vs. Human is supported)
+            - maxturns: int | Maximum number of turns
+    """
     def __init__(self, playmode='H-H', maxturns=1000):
+        
         self.current_game_state = self.init_board()
         self.playmode = playmode
         self.maxturns = maxturns
@@ -13,13 +21,14 @@ class MiniChess:
         self.piece_count_history = []
         self.game_over = False
         self.result = None
-        self.move_count = 0
+        self.move_count = 1
 
     """
-    Initialize the board
+    Initialize the board configuration
 
     Args:
         - None
+
     Returns:
         - state: A dictionary representing the state of the game
     """
@@ -36,19 +45,23 @@ class MiniChess:
         return state
 
     """
-    Prints the board
+    Prints the board state to the console
     
     Args:
         - game_state: Dictionary representing the current game state
     Returns:
         - None
     """
+
     def display_board(self, game_state):
-        print()
+        print("\n                  A     B    C    D    E")
+        print("                +----+----+----+----+----+")
         for i, row in enumerate(game_state["board"], start=1):
-            print(str(6-i) + "  " + ' '.join(piece.rjust(3) for piece in row))
-        print()
-        print("     A   B   C   D   E")
+            row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}"
+            print(row_str)
+            print("                +----+----+----+----+----+")
+            
+        print("                  A     B    C    D    E")
         print()
 
     """
@@ -176,12 +189,21 @@ class MiniChess:
 
         return valid_moves
     
+    """
+    Count the number of pieces on the board
 
+    Args:
+        - board: list | List of lists representing the board state
+
+    Returns:
+        - int | Number of non-empty squares on the board
+    """
+    
     def count_pieces(self, board):
         return sum(cell != '.' for row in board for cell in row)
 
     """
-    Modify to board to make a move
+    Execute the move on the board and update the game state
 
     Args: 
         - game_state:   dictionary | Dictionary representing the current game state
@@ -205,7 +227,7 @@ class MiniChess:
         king_piece = any(cell == opponent + 'K' for row in game_state["board"] for cell in row)
         if not king_piece:
             self.game_over = True
-            self.result = f"{game_state['turn'].capitalize()} wins by capturing the king"
+            self.result = f"{game_state['turn'].capitalize()} wins by capturing the king in {self.turn_count + 1} turns."
         
         # pawn promotion
         if piece[1] == 'p':
@@ -255,108 +277,135 @@ class MiniChess:
         except:
             return None
 
+    """
+    Convert board coordinates to chess notation
+
+    Args:
+        - pos: tuple representing the board coordinates (row, col)
+    Returns:
+        - string representing the chess notation "B2"
+    """
+
     def convert_to_notation(self, pos):
         row, col = pos
         return f"{chr(col + ord('A')) + str(5 - row)}"
     
+    """
+    Write the board state to a file
+
+    Args:
+        - file: file object | File object to write to
+        - game_state: dictionary | Dictionary representing the current game state
+    Returns:
+        - None
+    """
     def write_board_to_file(self, file, game_state):
-        for i, row in enumerate(game_state["board"]):
-            file.write(f"{5 - i}  {' '.join(piece.rjust(3) for piece in row)}\n")
-        file.write("\n    A   B   C   D   E\n\n")
+        file.write("\n                  A     B    C    D    E\n")
+        file.write("                +----+----+----+----+----+\n")
+        for i, row in enumerate(game_state["board"], start=1):
+            row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}\n"
+            file.write(row_str)
+            file.write("                +----+----+----+----+----+\n")
+        file.write("                  A     B    C    D    E\n")
+
 
     """
-    Game loop
+    Generate the next filename for the game trace
+
+    Args:
+        - None
+    Returns:
+        - string representing the filename
+    """
+
+    def get_next_filename(self):
+        # Save in the same folder as this script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        base_name = os.path.join(base_dir, "gameTrace-HH")
+        index = 1
+        while True:
+            filename = f"{base_name}-{index}.txt"
+            if not os.path.exists(filename):
+                print(f"\nCreating file...")
+                return filename
+            index += 1
+
+    """
+    Main game loop handling player input and game progression
 
     Args:
         - None
     Returns:
         - None
     """
-    # def play(self):
-    #     print("Welcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
-    #     while True:
-    #         self.display_board(self.current_game_state)
-    #         move = input(f"{self.current_game_state['turn'].capitalize()} to move: ")
-    #         if move.lower() == 'exit':
-    #             print("Game exited.")
-    #             exit(1)
-
-    #         move = self.parse_input(move)
-    #         if not move or not self.is_valid_move(self.current_game_state, move):
-    #             print("Invalid move. Try again.")
-    #             continue
-
-    #         self.make_move(self.current_game_state, move)
-
-    def get_next_filename(self):
-        """
-        Generate the next available filename in the format gameTrace-HH-#.txt.
-        """
-        base_name = "gameTrace-HH"
-        index = 1
-        while True:
-            filename = f"{base_name}-{index}.txt"
-            if not os.path.exists(filename):
-                return filename
-            index += 1
 
     def play(self):
         if self.playmode != 'H-H':
             print(f"Play mode '{self.playmode}' is not implemented yet. Only Human vs. Human (H-H) is supported.")
             return
 
-        # Create the output file
-        # filename = f"gameTrace-H-H.txt"  # Human vs. Human mode
-
-        # Generate the next available filename
         filename = self.get_next_filename()
+        print(f"Writing game trace to: {filename}")
 
         with open(filename, 'w') as f:
-            # Write game parameters to file
+            # Initialize game file
             f.write(f"Play mode: {self.playmode}\nMax turns: {self.maxturns}\n\nInitial Board:\n")
             self.write_board_to_file(f, self.current_game_state)
+            f.flush()
+            os.fsync(f.fileno())
 
+            # Game loop
             print("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
             while not self.game_over:
                 self.display_board(self.current_game_state)
                 current_player = self.current_game_state['turn']
 
-                move_str = input(f"{current_player.capitalize()} to move: ")
-
+                # Get and validate move
+                move_str = input(f"                   {current_player.capitalize()} to move: ")
                 if move_str.lower() == 'exit':
                     break
 
                 move = self.parse_input(move_str)
                 if not move or not self.is_valid_move(self.current_game_state, move):
-                    print("Invalid move. Try again.")
+                    print("      * * * * * * Invalid move. Try again. * * * * * *")
                     continue
 
-                # Log action
+                # Log move details and execute move
                 start_notation = self.convert_to_notation(move[0])
                 end_notation = self.convert_to_notation(move[1])
                 turn_number = (self.move_count + 1) // 2
-                log_msg = f"Player: {current_player}\nTurn #: {turn_number}\nAction: {start_notation} to {end_notation}\n"
+                log_msg = f"\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n"
                 print(log_msg)
                 f.write(log_msg)
+                f.flush()
+                os.fsync(f.fileno())
+                print("Move details and New board configuration written to file.")
 
-                # Make move
+                # Update game state
                 self.make_move(self.current_game_state, move)
                 self.move_count += 1
 
-                # Log new board
+                # Write new board configuration to file
+                f.write("\nMove details and New board configuration written to file.\n")
                 f.write("New Board Configuration:\n")
                 self.write_board_to_file(f, self.current_game_state)
+                f.flush()
+                os.fsync(f.fileno())
                 print("New Board Configuration:")
-                self.display_board(self.current_game_state)
 
+                
+                # Check for game over
                 if self.game_over:
-                    f.write(f"\nResult: {self.result}\n")
-                    print(f"\nResult: {self.result}")
+
+                    f.write(f"\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  |    Result: {self.result}    |\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+                    f.flush()
+                    os.fsync(f.fileno())
+                    self.display_board(self.current_game_state)
+                    print(f"\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  |    Result: {self.result}    |\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
             if self.game_over:
-                f.write(f"\nResult: {self.result}\n")
-
-
+                f.flush()
+                os.fsync(f.fileno())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -366,4 +415,3 @@ if __name__ == "__main__":
 
     game = MiniChess(playmode=args.playmode, maxturns=args.maxturns)
     game.play()
-
