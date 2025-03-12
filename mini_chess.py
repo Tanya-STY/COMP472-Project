@@ -4,6 +4,8 @@ import time
 import argparse
 import os
 
+# make sure if piece is in the way - to check!!
+
 class MiniChess:
     """
         Initialize MiniChess game instance
@@ -12,7 +14,7 @@ class MiniChess:
             - playmode: string | Play mode: H-H (for now, only Human vs. Human is supported)
             - maxturns: int | Maximum number of turns
     """
-    def __init__(self, playmode='H-H', maxturns=1000):
+    def __init__(self, playmode='H-H', maxturns=100, timeout=5, alpha_beta=True, heuristic_white='e0', heuristic_black='e0'):
         
         self.current_game_state = self.init_board()
         self.playmode = playmode
@@ -22,6 +24,13 @@ class MiniChess:
         self.game_over = False
         self.result = None
         self.move_count = 1
+
+        # AI parameter
+        self.timeout = timeout 
+        self.alpha_beta = alpha_beta
+        self.heuristics = {'white': heuristic_white, 'black': heuristic_black}
+        self.stats = {"states_explored": 0, "depth_counts": defaultdict(int)}
+
 
     """
     Initialize the board configuration
@@ -140,14 +149,22 @@ class MiniChess:
                         step = 1
                         while True:
                             new_row, new_col = row + step * dir_row, col + step * dir_col
+                            
+                            # Check if new position is out of bounds
                             if not (0 <= new_row < rows and 0 <= new_col < cols):
                                 break
                             target = board[new_row][new_col]
+                            
+                            # Check if new position is empty
                             if target == '.':
                                 valid_moves.append(((row, col), (new_row, new_col)))
+                            
+                            # Check if new position has opponent piece
                             elif target[0] == opponent_color:
                                 valid_moves.append(((row, col), (new_row, new_col)))
                                 break
+                            
+                            # If new position has same color piece, break
                             else:
                                 break
                             step += 1
@@ -245,11 +262,9 @@ class MiniChess:
                 self.game_over = True
                 self.result = "Draw by reaching max turns"
             # Check 10-turn draw
-            # If there have been at least 10 recorded turn counts, the code checks if the piece count
-            # has been the same for the last 10 turns. If so, the game is a draw.
             if len(self.piece_count_history) >= 10:
-                last_ten = self.piece_count_history[-10:] # Get the last 10 turn counts
-                if all(x == last_ten[0] for x in last_ten): # Checks if x is equal to the first element of the last_ten list
+                last_ten = self.piece_count_history[-10:]
+                if all(x == last_ten[0] for x in last_ten):
                     self.game_over = True
                     self.result = "Draw by 10 turns with no captures"
                     
@@ -322,8 +337,8 @@ class MiniChess:
 
     def get_next_filename(self):
         # Save in the same folder as this script
-        base_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the script
-        base_name = os.path.join(base_dir, "gameTrace-HH") # Create the base name
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        base_name = os.path.join(base_dir, "gameTrace-HH")
         index = 1
         while True:
             filename = f"{base_name}-{index}.txt"
@@ -349,12 +364,12 @@ class MiniChess:
         filename = self.get_next_filename()
         print(f"Writing game trace to: {filename}")
 
-        with open(filename, 'w') as f: # Open the file in write mode
+        with open(filename, 'w') as f:
             # Initialize game file
             f.write(f"Play mode: {self.playmode}\nMax turns: {self.maxturns}\n\nInitial Board:\n")
             self.write_board_to_file(f, self.current_game_state)
-            f.flush() 
-            os.fsync(f.fileno()) # Flush the file buffer to ensure the data is written to the file
+            f.flush()
+            os.fsync(f.fileno())
 
             # Game loop
             print("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
@@ -367,8 +382,8 @@ class MiniChess:
                 if move_str.lower() == 'exit':
                     break
 
-                move = self.parse_input(move_str) 
-                if not move or not self.is_valid_move(self.current_game_state, move): # Check if move is valid
+                move = self.parse_input(move_str)
+                if not move or not self.is_valid_move(self.current_game_state, move):
                     print("      * * * * * * Invalid move. Try again. * * * * * *")
                     continue
 
@@ -384,8 +399,8 @@ class MiniChess:
                 print("Move details and New board configuration written to file.")
 
                 # Update game state
-                self.make_move(self.current_game_state, move) # Make the move
-                self.move_count += 1 # Increment move count
+                self.make_move(self.current_game_state, move)
+                self.move_count += 1
 
                 # Write new board configuration to file
                 f.write("\nMove details and New board configuration written to file.\n")
@@ -405,14 +420,18 @@ class MiniChess:
                     self.display_board(self.current_game_state)
                     print(f"\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  |    Result: {self.result}    |\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
-            if self.game_over: # If the game is over
+            if self.game_over:
                 f.flush()
                 os.fsync(f.fileno())
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser() 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--timeout', type=int, default=5, help="Max time per AI move (seconds)")
+    parser.add_argument('--use_alpha_beta', type=bool, default=True, help="Use alpha-beta pruning")
+    parser.add_argument('--heaurisitc_white', type=str, default='e0', help="Heuristic for white (e0, e1, e2)")
+    parser.add_argument('--heaurisitc_black', type=str, default='e0', help="Heuristic for black (e0, e1, e2)")
     parser.add_argument('--playmode', type=str, default='H-H', help="Play mode: H-H, H-AI, AI-H, AI-AI")
-    parser.add_argument('--maxturns', type=int, default=1000, help="Maximum number of turns")
+    parser.add_argument('--maxturns', type=int, default=100, help="Maximum number of turns")
     args = parser.parse_args()
 
     game = MiniChess(playmode=args.playmode, maxturns=args.maxturns)
