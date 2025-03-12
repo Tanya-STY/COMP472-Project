@@ -3,8 +3,7 @@ import copy
 import time
 import argparse
 import os
-
-# make sure if piece is in the way - to check!!
+from collections import defaultdict
 
 class MiniChess:
     """
@@ -357,16 +356,38 @@ class MiniChess:
     """
 
     def play(self):
-        if self.playmode != 'H-H':
-            print(f"Play mode '{self.playmode}' is not implemented yet. Only Human vs. Human (H-H) is supported.")
-            return
+        # Determine player types based on playmode.
+        if self.playmode == 'H-H':
+            white_is_ai = False
+            black_is_ai = False
+        elif self.playmode == 'H-AI':
+            white_is_ai = False
+            black_is_ai = True
+        elif self.playmode == 'AI-H':
+            white_is_ai = True
+            black_is_ai = False
+        elif self.playmode == 'AI-AI':
+            white_is_ai = True
+            black_is_ai = True
+        else:
+            print(f"Unknown play mode '{self.playmode}', defaulting to H-H.")
+            white_is_ai = black_is_ai = False
 
         filename = self.get_next_filename()
         print(f"Writing game trace to: {filename}")
 
         with open(filename, 'w') as f:
-            # Initialize game file
-            f.write(f"Play mode: {self.playmode}\nMax turns: {self.maxturns}\n\nInitial Board:\n")
+
+            params = f"Play mode: {self.playmode}\n"f"Max turns: {self.maxturns}\n"f"Timeout: {self.timeout} sec\n"f"Alpha-Beta pruning: {self.alpha_beta}\n"
+            if white_is_ai or black_is_ai:
+                params = (f"Play mode: {self.playmode}\n"
+                      f"Max turns: {self.maxturns}\n"
+                      f"Timeout: {self.timeout} sec\n"
+                      f"Alpha-Beta pruning: {self.alpha_beta}\n")
+            
+            params += "\n Initial Board Configuration:\n"
+            f.write(params)
+            
             self.write_board_to_file(f, self.current_game_state)
             f.flush()
             os.fsync(f.fileno())
@@ -391,7 +412,7 @@ class MiniChess:
                 start_notation = self.convert_to_notation(move[0])
                 end_notation = self.convert_to_notation(move[1])
                 turn_number = (self.move_count + 1) // 2
-                log_msg = f"\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n"
+                log_msg = f"\n-------------------------------------------------\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n"
                 print(log_msg)
                 f.write(log_msg)
                 f.flush()
@@ -425,6 +446,34 @@ class MiniChess:
                 os.fsync(f.fileno())
 
 if __name__ == "__main__":
+    # Prompt for player modes.
+    player1_mode = input("Enter Player 1 mode (H for Human, AI for AI): ").strip().upper()
+    player2_mode = input("Enter Player 2 mode (H for Human, AI for AI): ").strip().upper()
+    playmode = f"{player1_mode}-{player2_mode}"
+
+    # Prompt for maximum allowed time (in seconds) for the AI to return a move.
+    timeout_str = input("Enter maximum allowed time per move (in seconds): ").strip()
+    try:
+        timeout = float(timeout_str)
+    except ValueError:
+        timeout = 5  # default value if conversion fails
+    
+    # Prompt for maximum number of turns to declare the game over.
+    maxturns_str = input("Enter maximum number of turns: ").strip()
+    try:
+        maxturns = int(maxturns_str)
+    except ValueError:
+        maxturns = 10  # default value if conversion fails
+    
+    # Prompt for the boolean to force use of minimax (False) or alpha-beta (True)
+    alpha_input = input("Force use of alpha-beta pruning? (Enter True or False): ").strip().lower()
+    alpha_beta = alpha_input in ['true', 't', 'yes', '1']
+    
+    # (Optional) You can also prompt separately for each player's heuristic if desired.
+    heuristic_white = input("Enter heuristic for White (e.g., e0): ").strip() or 'e0'
+    heuristic_black = input("Enter heuristic for Black (e.g., e0): ").strip() or 'e0'
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--timeout', type=int, default=5, help="Max time per AI move (seconds)")
     parser.add_argument('--use_alpha_beta', type=bool, default=True, help="Use alpha-beta pruning")
