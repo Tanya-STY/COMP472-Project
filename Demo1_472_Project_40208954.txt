@@ -1,0 +1,400 @@
+Play mode: H-H
+Max turns: 1000
+
+Initial Board:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK | bQ | bB | bN |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 |    |    |    |    |    | 3
+                +----+----+----+----+----+
+              2 |    | wp | wp |    |    | 2
+                +----+----+----+----+----+
+              1 |    | wN | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 1        |
+                  | Action: B1 to D2 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK | bQ | bB | bN |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 |    |    |    |    |    | 3
+                +----+----+----+----+----+
+              2 |    | wp | wp | wN |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 1        |
+                  | Action: C5 to A3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK | bQ |    | bN |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 | bB |    |    |    |    | 3
+                +----+----+----+----+----+
+              2 |    | wp | wp | wN |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 2        |
+                  | Action: C2 to C3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK | bQ |    | bN |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 | bB |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    | wp |    | wN |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 2        |
+                  | Action: D5 to C3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK | bQ |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 | bB |    | bN |    |    | 3
+                +----+----+----+----+----+
+              2 |    | wp |    | wN |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 3        |
+                  | Action: B2 to C3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK | bQ |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 | bB |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    | wN |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 3        |
+                  | Action: B5 to B3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK |    |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 | bB | bQ | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    | wN |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 4        |
+                  | Action: D2 to B3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK |    |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 | bB | wN | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    |    | 2
+                +----+----+----+----+----+
+              1 |    |    | wB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 4        |
+                  | Action: A3 to C1 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK |    |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 |    | wN | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    |    | 2
+                +----+----+----+----+----+
+              1 |    |    | bB | wQ | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 5        |
+                  | Action: D1 to E2 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 | bK |    |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    |    | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 |    | wN | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | wQ | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 5        |
+                  | Action: A5 to B4 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    |    |    |    | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 |    | wN | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | wQ | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 6        |
+                  | Action: B3 to C5 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN |    |    | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp | bp |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | wQ | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 6        |
+                  | Action: D4 to D3 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN |    |    | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp | bp |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | wQ | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 7        |
+                  | Action: E2 to E5 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN |    | wQ | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp | bp |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    |    | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 7        |
+                  | Action: D3 to D2 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN |    | wQ | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    | bp |    | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    | wK | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 8        |
+                  | Action: E1 to E2 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN |    | wQ | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    | bp | wK | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    |    | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 8        |
+                  | Action: D2 to D1 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN |    | wQ | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | wK | 2
+                +----+----+----+----+----+
+              1 |    |    | bB | bQ |    | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: white    |
+                  | Turn #: 9        |
+                  | Action: E5 to D5 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN | wQ |    | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | wK | 2
+                +----+----+----+----+----+
+              1 |    |    | bB | bQ |    | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+                  | Player: black    |
+                  | Turn #: 9        |
+                  | Action: D1 to E2 |
+
+Move details and New board configuration written to file.
+New Board Configuration:
+
+                  A     B    C    D    E
+                +----+----+----+----+----+
+              5 |    |    | wN | wQ |    | 5
+                +----+----+----+----+----+
+              4 |    | bK | bp |    |    | 4
+                +----+----+----+----+----+
+              3 |    |    | wp |    |    | 3
+                +----+----+----+----+----+
+              2 |    |    |    |    | bQ | 2
+                +----+----+----+----+----+
+              1 |    |    | bB |    |    | 1
+                +----+----+----+----+----+
+                  A     B    C    D    E
+
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  |    Result: Black wins by capturing the king in 9 turns.    |
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -245,9 +245,11 @@ class MiniChess:
                 self.game_over = True
                 self.result = "Draw by reaching max turns"
             # Check 10-turn draw
+            # If there have been at least 10 recorded turn counts, the code checks if the piece count
+            # has been the same for the last 10 turns. If so, the game is a draw.
             if len(self.piece_count_history) >= 10:
-                last_ten = self.piece_count_history[-10:]
-                if all(x == last_ten[0] for x in last_ten):
+                last_ten = self.piece_count_history[-10:] # Get the last 10 turn counts
+                if all(x == last_ten[0] for x in last_ten): # Checks if x is equal to the first element of the last_ten list
                     self.game_over = True
                     self.result = "Draw by 10 turns with no captures"
                     
@@ -320,8 +322,8 @@ class MiniChess:
 
     def get_next_filename(self):
         # Save in the same folder as this script
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        base_name = os.path.join(base_dir, "gameTrace-HH")
+        base_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the script
+        base_name = os.path.join(base_dir, "gameTrace-HH") # Create the base name
         index = 1
         while True:
             filename = f"{base_name}-{index}.txt"
@@ -347,12 +349,12 @@ class MiniChess:
         filename = self.get_next_filename()
         print(f"Writing game trace to: {filename}")
 
-        with open(filename, 'w') as f:
+        with open(filename, 'w') as f: # Open the file in write mode
             # Initialize game file
             f.write(f"Play mode: {self.playmode}\nMax turns: {self.maxturns}\n\nInitial Board:\n")
             self.write_board_to_file(f, self.current_game_state)
-            f.flush()
-            os.fsync(f.fileno())
+            f.flush() 
+            os.fsync(f.fileno()) # Flush the file buffer to ensure the data is written to the file
 
             # Game loop
             print("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
@@ -365,8 +367,8 @@ class MiniChess:
                 if move_str.lower() == 'exit':
                     break
 
-                move = self.parse_input(move_str)
-                if not move or not self.is_valid_move(self.current_game_state, move):
+                move = self.parse_input(move_str) 
+                if not move or not self.is_valid_move(self.current_game_state, move): # Check if move is valid
                     print("      * * * * * * Invalid move. Try again. * * * * * *")
                     continue
 
@@ -382,8 +384,8 @@ class MiniChess:
                 print("Move details and New board configuration written to file.")
 
                 # Update game state
-                self.make_move(self.current_game_state, move)
-                self.move_count += 1
+                self.make_move(self.current_game_state, move) # Make the move
+                self.move_count += 1 # Increment move count
 
                 # Write new board configuration to file
                 f.write("\nMove details and New board configuration written to file.\n")
@@ -403,14 +405,14 @@ class MiniChess:
                     self.display_board(self.current_game_state)
                     print(f"\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  |    Result: {self.result}    |\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
-            if self.game_over:
+            if self.game_over: # If the game is over
                 f.flush()
                 os.fsync(f.fileno())
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser() 
     parser.add_argument('--playmode', type=str, default='H-H', help="Play mode: H-H, H-AI, AI-H, AI-AI")
-    parser.add_argument('--maxturns', type=int, default=100, help="Maximum number of turns")
+    parser.add_argument('--maxturns', type=int, default=1000, help="Maximum number of turns")
     args = parser.parse_args()
 
     game = MiniChess(playmode=args.playmode, maxturns=args.maxturns)
