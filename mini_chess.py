@@ -29,7 +29,13 @@ class MiniChess:
         self.alpha_beta = alpha_beta
         self.heuristics = {'white': heuristic_white, 'black': heuristic_black}
         self.stats = {"states_explored": 0, "depth_counts": defaultdict(int)}
+        
+        self.output_buffer = []
+        self.filename = self.get_next_filename()
 
+    def log(self, message, end='\n'):
+        self.output_buffer.append(message + end)
+        print(message, end=end)
 
     """
     Initialize the board configuration
@@ -61,16 +67,27 @@ class MiniChess:
         - None
     """
 
+    # def display_board(self, game_state):
+    #     print("\n                  A     B    C    D    E")
+    #     print("                +----+----+----+----+----+")
+    #     for i, row in enumerate(game_state["board"], start=1):
+    #         row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}"
+    #         print(row_str)
+    #         print("                +----+----+----+----+----+")
+            
+    #     print("                  A     B    C    D    E")
+    #     print()
+
     def display_board(self, game_state):
-        print("\n                  A     B    C    D    E")
-        print("                +----+----+----+----+----+")
+        board_str = []
+        board_str.append("\n                  A     B    C    D    E")
+        board_str.append("                +----+----+----+----+----+")
         for i, row in enumerate(game_state["board"], start=1):
             row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}"
-            print(row_str)
-            print("                +----+----+----+----+----+")
-            
-        print("                  A     B    C    D    E")
-        print()
+            board_str.append(row_str)
+            board_str.append("                +----+----+----+----+----+")
+        board_str.append("                  A     B    C    D    E\n")
+        return '\n'.join(board_str)
 
     """
     Check if the move is valid    
@@ -236,7 +253,6 @@ class MiniChess:
         piece = game_state["board"][start_row][start_col]
         game_state["board"][start_row][start_col] = '.'
         game_state["board"][end_row][end_col] = piece
-        # game_state["turn"] = "black" if game_state["turn"] == "white" else "white"
 
         # check king capture
         opponent = 'b' if game_state["turn"] == 'white' else 'w'
@@ -280,9 +296,6 @@ class MiniChess:
     def parse_input(self, move):
         try:
             start, end = move.split()
-            # start = (5-int(start[1]), ord(start[0].upper()) - ord('A'))
-            # end = (5-int(end[1]), ord(end[0].upper()) - ord('A'))
-            # return (start, end)
             start_row = 5 - int(start[1])
             start_col = ord(start[0].upper()) - ord('A')
             end_row = 5 - int(end[1])
@@ -302,9 +315,13 @@ class MiniChess:
         - string representing the chess notation "B2"
     """
 
+    # def convert_to_notation(self, pos):
+    #     row, col = pos
+    #     return f"{chr(col + ord('A')) + str(5 - row)}"
+
     def convert_to_notation(self, pos):
         row, col = pos
-        return f"{chr(col + ord('A')) + str(5 - row)}"
+        return f"{chr(col + ord('A'))}{5 - row}"
     
     """
     Write the board state to a file
@@ -334,17 +351,29 @@ class MiniChess:
         - string representing the filename
     """
 
+    # def get_next_filename(self):
+    #     # Save in the same folder as this script
+    #     base_dir = os.path.dirname(os.path.abspath(__file__))
+    #     base_name = os.path.join(base_dir, "gameTrace-HH")
+    #     index = 1
+    #     while True:
+    #         filename = f"{base_name}-{index}.txt"
+    #         if not os.path.exists(filename):
+    #             print(f"\nCreating file...")
+    #             return filename
+    #         index += 1
+
     def get_next_filename(self):
-        # Save in the same folder as this script
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        base_name = os.path.join(base_dir, "gameTrace-HH")
+        base_name = os.path.join(base_dir, "gameTrace")
         index = 1
         while True:
             filename = f"{base_name}-{index}.txt"
             if not os.path.exists(filename):
-                print(f"\nCreating file...")
+                self.log(f"Creating game trace file: {filename}")
                 return filename
             index += 1
+
 
     """
     Main game loop handling player input and game progression
@@ -356,132 +385,86 @@ class MiniChess:
     """
 
     def play(self):
-        # Determine player types based on playmode.
-        if self.playmode == 'H-H':
-            white_is_ai = False
-            black_is_ai = False
-        elif self.playmode == 'H-AI':
-            white_is_ai = False
-            black_is_ai = True
-        elif self.playmode == 'AI-H':
-            white_is_ai = True
-            black_is_ai = False
-        elif self.playmode == 'AI-AI':
-            white_is_ai = True
-            black_is_ai = True
-        else:
-            print(f"Unknown play mode '{self.playmode}', defaulting to H-H.")
-            white_is_ai = black_is_ai = False
+        white_is_ai = 'AI' in self.playmode.split('-')[0].upper()
+        black_is_ai = 'AI' in self.playmode.split('-')[1].upper()
 
-        filename = self.get_next_filename()
-        print(f"Writing game trace to: {filename}")
+        params = [
+            f"Playmode: {self.playmode}",
+            f"Max turns: {self.maxturns}",
+            f"Timeout: {self.timeout}",
+            f"Alpha-beta: {self.alpha_beta}",
+            f"Heuristic (White): {self.heuristics['white']}",
+            f"Heuristic (Black): {self.heuristics['black']}",
+            "\nInitial Board Configuration:",
+            self.display_board(self.current_game_state) 
+        ]
+        self.log("\n".join(params))
 
-        with open(filename, 'w') as f:
+        self.log("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
+        while not self.game_over:
+            current_player = self.current_game_state['turn']
+            is_ai_turn = (current_player == 'white' and white_is_ai) or (current_player == 'black' and black_is_ai)
 
-            params = f"Play mode: {self.playmode}\n"f"Max turns: {self.maxturns}\n"f"Timeout: {self.timeout} sec\n"f"Alpha-Beta pruning: {self.alpha_beta}\n"
-            if white_is_ai or black_is_ai:
-                params = (f"Play mode: {self.playmode}\n"
-                      f"Max turns: {self.maxturns}\n"
-                      f"Timeout: {self.timeout} sec\n"
-                      f"Alpha-Beta pruning: {self.alpha_beta}\n")
+            # self.log(self.display_board(self.current_game_state))
+
+            if is_ai_turn:
+                move = ((0, 0), (0, 0))
+                move_str = "A1 A1"
+                self.log(f"AI plays: {move_str}")
             
-            params += "\n Initial Board Configuration:\n"
-            f.write(params)
+            # else:
+            #     move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
             
-            self.write_board_to_file(f, self.current_game_state)
-            f.flush()
-            os.fsync(f.fileno())
+            else:
+                move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
+                self.output_buffer.append(f"                   {current_player.capitalize()} to move: {move_str}")
 
-            # Game loop
-            print("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
-            while not self.game_over:
-                self.display_board(self.current_game_state)
-                current_player = self.current_game_state['turn']
 
-                # Get and validate move
-                move_str = input(f"                   {current_player.capitalize()} to move: ")
-                if move_str.lower() == 'exit':
-                    break
+            if move_str.lower() == 'exit':
+                self.log("\nGame exited by user.")
+                break
 
-                move = self.parse_input(move_str)
-                if not move or not self.is_valid_move(self.current_game_state, move):
-                    print("      * * * * * * Invalid move. Try again. * * * * * *")
-                    continue
+            move = self.parse_input(move_str)
+            if not move or not self.is_valid_move(self.current_game_state, move):
+                self.log("      * * * * * * Invalid move. Try again. * * * * * *")
+                continue
 
-                # Log move details and execute move
-                start_notation = self.convert_to_notation(move[0])
-                end_notation = self.convert_to_notation(move[1])
-                turn_number = (self.move_count + 1) // 2
-                log_msg = f"\n-------------------------------------------------\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n"
-                print(log_msg)
-                f.write(log_msg)
-                f.flush()
-                os.fsync(f.fileno())
-                print("Move details and New board configuration written to file.")
+            start_notation = self.convert_to_notation(move[0])
+            end_notation = self.convert_to_notation(move[1])
+            turn_number = (self.move_count + 1) // 2
+            self.log(f"\n-------------------------------------------------\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n") 
 
-                # Update game state
-                self.make_move(self.current_game_state, move)
-                self.move_count += 1
+            self.make_move(self.current_game_state, move)
+            self.move_count += 1
 
-                # Write new board configuration to file
-                f.write("\nMove details and New board configuration written to file.\n")
-                f.write("New Board Configuration:\n")
-                self.write_board_to_file(f, self.current_game_state)
-                f.flush()
-                os.fsync(f.fileno())
-                print("New Board Configuration:")
+            self.log("New board configuration:")
+            self.log(self.display_board(self.current_game_state))
+        
+        if self.game_over:
+            self.log(f"\nGame over! {self.result}")
+        
+        
+        with open(self.filename, 'w') as f:
+            f.write("\n".join(self.output_buffer))
+        print(f"Game trace written to file: {self.filename}")
 
-                
-                # Check for game over
-                if self.game_over:
-
-                    f.write(f"\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  |    Result: {self.result}    |\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
-                    f.flush()
-                    os.fsync(f.fileno())
-                    self.display_board(self.current_game_state)
-                    print(f"\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  |    Result: {self.result}    |\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
-
-            if self.game_over:
-                f.flush()
-                os.fsync(f.fileno())
 
 if __name__ == "__main__":
-    # Prompt for player modes.
-    player1_mode = input("Enter Player 1 mode (H for Human, AI for AI): ").strip().upper()
-    player2_mode = input("Enter Player 2 mode (H for Human, AI for AI): ").strip().upper()
-    playmode = f"{player1_mode}-{player2_mode}"
-
-    # Prompt for maximum allowed time (in seconds) for the AI to return a move.
-    timeout_str = input("Enter maximum allowed time per move (in seconds): ").strip()
-    try:
-        timeout = float(timeout_str)
-    except ValueError:
-        timeout = 5  # default value if conversion fails
-    
-    # Prompt for maximum number of turns to declare the game over.
-    maxturns_str = input("Enter maximum number of turns: ").strip()
-    try:
-        maxturns = int(maxturns_str)
-    except ValueError:
-        maxturns = 10  # default value if conversion fails
-    
-    # Prompt for the boolean to force use of minimax (False) or alpha-beta (True)
-    alpha_input = input("Force use of alpha-beta pruning? (Enter True or False): ").strip().lower()
-    alpha_beta = alpha_input in ['true', 't', 'yes', '1']
-    
-    # (Optional) You can also prompt separately for each player's heuristic if desired.
-    heuristic_white = input("Enter heuristic for White (e.g., e0): ").strip() or 'e0'
-    heuristic_black = input("Enter heuristic for Black (e.g., e0): ").strip() or 'e0'
-
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--timeout', type=int, default=5, help="Max time per AI move (seconds)")
-    parser.add_argument('--use_alpha_beta', type=bool, default=True, help="Use alpha-beta pruning")
-    parser.add_argument('--heaurisitc_white', type=str, default='e0', help="Heuristic for white (e0, e1, e2)")
-    parser.add_argument('--heaurisitc_black', type=str, default='e0', help="Heuristic for black (e0, e1, e2)")
-    parser.add_argument('--playmode', type=str, default='H-H', help="Play mode: H-H, H-AI, AI-H, AI-AI")
-    parser.add_argument('--maxturns', type=int, default=100, help="Maximum number of turns")
+    parser = argparse.ArgumentParser(description='Mini Chess Game')
+    parser.add_argument('--playmode', type=str, default='H-H', help='H-H, H-AI, AI-H, AI-AI')
+    parser.add_argument('--maxturns', type=int, default=100, help='Maximum number of turns')
+    parser.add_argument('--timeout', type=int, default=5, help='AI move timeout in seconds')
+    parser.add_argument('--alpha_beta', type=bool, default=True, help='Use alpha-beta pruning')
+    parser.add_argument('--heuristic_white', type=str, default='e0', help='Heuristic for white player')
+    parser.add_argument('--heuristic_black', type=str, default='e0', help='Heuristic for black player')
     args = parser.parse_args()
 
-    game = MiniChess(playmode=args.playmode, maxturns=args.maxturns)
+    game = MiniChess(
+        playmode=args.playmode,
+        maxturns=args.maxturns,
+        timeout=args.timeout,
+        alpha_beta=args.alpha_beta,
+        heuristic_white=args.heuristic_white,
+        heuristic_black=args.heuristic_black
+    )
     game.play()
