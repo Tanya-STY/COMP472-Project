@@ -453,13 +453,18 @@ class MiniChess:
         black_is_ai = 'AI' in self.playmode.split('-')[1].upper()
 
         params = [
-            f"Playmode: {self.playmode}",
-            f"Max turns: {self.maxturns}",
-            f"Timeout: {self.timeout}",
-            f"Alpha-beta: {self.alpha_beta}",
-            f"Heuristic (White): {self.heuristics['white']}",
-            f"Heuristic (Black): {self.heuristics['black']}",
+            f"                **************************",
+            f"                   Playmode: {self.playmode}",
+            f"                   Max turns: {self.maxturns}",
+            f"                   Timeout: {self.timeout}",
+            f"                   Alpha-beta: {self.alpha_beta}",
+            f"                   Heuristic (White): {self.heuristics['white']}",
+            f"                   Heuristic (Black): {self.heuristics['black']}",
+            f"                **************************",
+
+
             "\n               Initial Board Configuration:",
+            "              ______________________________",
             self.display_board(self.current_game_state) 
         ]
         self.log("\n".join(params))
@@ -517,7 +522,7 @@ class MiniChess:
 
 if __name__ == "__main__":
     # Prompt for parameters interactively.
-    p1 = input("Enter Player 1 mode (H for Human or AI for AI): ").strip().upper()
+    p1 = input("\nEnter Player 1 mode (H for Human or AI for AI): ").strip().upper()
     p2 = input("Enter Player 2 mode (H for Human or AI for AI): ").strip().upper()
     playmode = f"{p1}-{p2}"
     
