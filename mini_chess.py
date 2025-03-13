@@ -13,7 +13,7 @@ class MiniChess:
             - playmode: string | Play mode: H-H (for now, only Human vs. Human is supported)
             - maxturns: int | Maximum number of turns
     """
-    def __init__(self, playmode='H-H', maxturns=100, timeout=5, alpha_beta=True, heuristic_white='e0', heuristic_black='e0'):
+    def __init__(self, playmode='H-H', maxturns=10, timeout=5, alpha_beta=True, heuristic_white='e0', heuristic_black='e0'):
         
         self.current_game_state = self.init_board()
         self.playmode = playmode
@@ -332,19 +332,6 @@ class MiniChess:
     Returns:
         - string representing the filename
     """
-
-    # def get_next_filename(self):
-    #     # Save in the same folder as this script
-    #     base_dir = os.path.dirname(os.path.abspath(__file__))
-    #     base_name = os.path.join(base_dir, "gameTrace-HH")
-    #     index = 1
-    #     while True:
-    #         filename = f"{base_name}-{index}.txt"
-    #         if not os.path.exists(filename):
-    #             print(f"\nCreating file...")
-    #             return filename
-    #         index += 1
-
     def get_next_filename(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         base_name = os.path.join(base_dir, "gameTrace")
@@ -352,10 +339,105 @@ class MiniChess:
         while True:
             filename = f"{base_name}-{index}.txt"
             if not os.path.exists(filename):
-                self.log(f"Creating game trace file: {filename}")
+                self.log(f"\nCreating game trace file: {filename}\n")
                 return filename
             index += 1
 
+    # AI functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+    
+    """
+        Evaluate board using heuristic e0:
+        (#wp + 3*#wB + 3*#wN + 9*#wQ + 999*wK) − (#bp + 3*#bB + 3*#bN + 9*#bQ + 999*bK)
+        """
+    def evaluate_state(self, state):
+        """Improved heuristic to prioritize captures and checkmate threats."""
+        board = state['board']
+        piece_values = {'p': 1, 'B': 3, 'N': 3, 'Q': 9, 'K': 999}
+        white_score, black_score = 0, 0
+
+        for row in board:
+            for piece in row:
+                if piece == '.':
+                    continue
+                value = piece_values.get(piece[1], 0)
+                if piece[0] == 'w':
+                    white_score += value
+                else:
+                    black_score += value
+
+        # Prioritize captures: Add a bonus for each opponent piece missing
+        white_pieces = sum(1 for row in board for cell in row if cell.startswith('w'))
+        black_pieces = sum(1 for row in board for cell in row if cell.startswith('b'))
+        white_score += (16 - black_pieces) * 10  
+        black_score += (16 - white_pieces) * 10  
+
+        return white_score - black_score
+
+    def order_moves(self, state, moves):
+        """Prioritize capturing moves."""
+        def move_value(move):
+            _, end_pos = move
+            end_piece = state["board"][end_pos[0]][end_pos[1]]
+            return 10 if end_piece != '.' else 0  
+        return sorted(moves, key=move_value, reverse=True)
+
+    def minimax(self, state, depth, maximizing, alpha, beta, start_time, time_limit):
+        """Minimax with Alpha-Beta pruning that prioritizes capturing and checkmate."""
+        if time.time() - start_time >= time_limit:
+            return self.evaluate_state(state)
+        if depth == 0 or self.game_over:
+            return self.evaluate_state(state)
+
+        moves = self.order_moves(state, self.valid_moves(state))
+        if not moves:
+            return self.evaluate_state(state)
+
+        if maximizing:
+            value = -math.inf
+            for move in moves:
+                new_state = copy.deepcopy(state)
+                self.make_move(new_state, move)
+                value = max(value, self.minimax(new_state, depth - 1, False, alpha, beta, start_time, time_limit))
+                if self.alpha_beta:
+                    alpha = max(alpha, value)
+                    if alpha >= beta:
+                        break
+            return value
+        else:
+            value = math.inf
+            for move in moves:
+                new_state = copy.deepcopy(state)
+                self.make_move(new_state, move)
+                value = min(value, self.minimax(new_state, depth - 1, True, alpha, beta, start_time, time_limit))
+                if self.alpha_beta:
+                    beta = min(beta, value)
+                    if beta <= alpha:
+                        break
+            return value
+
+    def get_best_move(self, state, max_depth, time_limit):
+        """Selects the best move based on the minimax evaluation."""
+        start_time = time.time()
+        best_move = None
+        best_value = -math.inf if state["turn"] == "white" else math.inf
+
+        moves = self.order_moves(state, self.valid_moves(state))
+
+        for move in moves:
+            if time.time() - start_time > time_limit:
+                break
+            new_state = copy.deepcopy(state)
+            self.make_move(new_state, move)
+            value = self.minimax(new_state, max_depth - 1, state["turn"] == "black", -math.inf, math.inf, start_time, time_limit)
+
+            if state["turn"] == "white" and value > best_value:
+                best_value = value
+                best_move = move
+            elif state["turn"] == "black" and value < best_value:
+                best_value = value
+                best_move = move
+
+        return best_move
 
     """
     Main game loop handling player input and game progression
@@ -377,20 +459,27 @@ class MiniChess:
             f"Alpha-beta: {self.alpha_beta}",
             f"Heuristic (White): {self.heuristics['white']}",
             f"Heuristic (Black): {self.heuristics['black']}",
-            "\nInitial Board Configuration:",
+            "\n               Initial Board Configuration:",
             self.display_board(self.current_game_state) 
         ]
         self.log("\n".join(params))
 
         self.log("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
+
+        ai_depth = 4
+
+
         while not self.game_over:
             current_player = self.current_game_state['turn']
             is_ai_turn = (current_player == 'white' and white_is_ai) or (current_player == 'black' and black_is_ai)
 
             if is_ai_turn:
-                move = ((0, 0), (0, 0))
-                move_str = "A1 A1"
-                self.log(f"AI plays: {move_str}")
+                move = self.get_best_move(self.current_game_state, ai_depth, self.timeout)
+                if not move:
+                    self.log("No valid moves found. Game over.")
+                    break
+                move_str = f"{self.convert_to_notation(move[0])} {self.convert_to_notation(move[1])}"
+                self.log(f"                      AI plays: {move_str}")
             
             else:
                 move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
@@ -409,17 +498,17 @@ class MiniChess:
             start_notation = self.convert_to_notation(move[0])
             end_notation = self.convert_to_notation(move[1])
             turn_number = (self.move_count + 1) // 2
-            self.log(f"\n-------------------------------------------------\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n") 
+            self.log(f"\n     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n                  | Player: {current_player}    |\n                  | Turn #: {turn_number}        |\n                  | Action: {start_notation} to {end_notation} |\n") 
 
             self.make_move(self.current_game_state, move)
             self.move_count += 1
 
-            self.log("New board configuration:")
+            self.log("                  New board configuration:")
             self.log(self.display_board(self.current_game_state))
         
         if self.game_over:
-            self.log(f"\nGame over! {self.result}")
-        
+            self.log(f"\n     ++++++++++++++++++++++++++++++++++++++++++++++++++++++\n     Game over! {self.result} \n     ++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
+
         
         with open(self.filename, 'w') as f:
             f.write("\n".join(self.output_buffer))
@@ -442,6 +531,8 @@ if __name__ == "__main__":
             maxturns = int(input("Enter maximum number of turns: ").strip())
         except ValueError:
             maxturns = 100
+
+
 
         # For each AI, prompt for alpha-beta and heuristic.
         if p1 == "AI":
@@ -472,7 +563,7 @@ if __name__ == "__main__":
     else:
         # Both human.
         timeout = 5
-        maxturns = 100
+        maxturns = 10 
         alpha_beta = True
         heuristic_white = 'e0'
         heuristic_black = 'e0'
@@ -487,21 +578,3 @@ if __name__ == "__main__":
     )
     game.play()
     
-    # parser = argparse.ArgumentParser(description='Mini Chess Game')
-    # parser.add_argument('--playmode', type=str, default='H-H', help='H-H, H-AI, AI-H, AI-AI')
-    # parser.add_argument('--maxturns', type=int, default=100, help='Maximum number of turns')
-    # parser.add_argument('--timeout', type=int, default=5, help='AI move timeout in seconds')
-    # parser.add_argument('--alpha_beta', type=bool, default=True, help='Use alpha-beta pruning')
-    # parser.add_argument('--heuristic_white', type=str, default='e0', help='Heuristic for white player')
-    # parser.add_argument('--heuristic_black', type=str, default='e0', help='Heuristic for black player')
-    # args = parser.parse_args()
-
-    # game = MiniChess(
-    #     playmode=args.playmode,
-    #     maxturns=args.maxturns,
-    #     timeout=args.timeout,
-    #     alpha_beta=args.alpha_beta,
-    #     heuristic_white=args.heuristic_white,
-    #     heuristic_black=args.heuristic_black
-    # )
-    # game.play()
