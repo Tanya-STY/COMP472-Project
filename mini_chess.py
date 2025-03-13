@@ -66,18 +66,6 @@ class MiniChess:
     Returns:
         - None
     """
-
-    # def display_board(self, game_state):
-    #     print("\n                  A     B    C    D    E")
-    #     print("                +----+----+----+----+----+")
-    #     for i, row in enumerate(game_state["board"], start=1):
-    #         row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}"
-    #         print(row_str)
-    #         print("                +----+----+----+----+----+")
-            
-    #     print("                  A     B    C    D    E")
-    #     print()
-
     def display_board(self, game_state):
         board_str = []
         board_str.append("\n                  A     B    C    D    E")
@@ -245,8 +233,6 @@ class MiniChess:
         - game_state:   dictionary | Dictionary representing the modified game state
     """
     def make_move(self, game_state, move):
-        # start = move[0]
-        # end = move[1]
         start, end = move
         start_row, start_col = start
         end_row, end_col = end
@@ -314,10 +300,6 @@ class MiniChess:
     Returns:
         - string representing the chess notation "B2"
     """
-
-    # def convert_to_notation(self, pos):
-    #     row, col = pos
-    #     return f"{chr(col + ord('A')) + str(5 - row)}"
 
     def convert_to_notation(self, pos):
         row, col = pos
@@ -405,15 +387,10 @@ class MiniChess:
             current_player = self.current_game_state['turn']
             is_ai_turn = (current_player == 'white' and white_is_ai) or (current_player == 'black' and black_is_ai)
 
-            # self.log(self.display_board(self.current_game_state))
-
             if is_ai_turn:
                 move = ((0, 0), (0, 0))
                 move_str = "A1 A1"
                 self.log(f"AI plays: {move_str}")
-            
-            # else:
-            #     move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
             
             else:
                 move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
@@ -450,21 +427,81 @@ class MiniChess:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Mini Chess Game')
-    parser.add_argument('--playmode', type=str, default='H-H', help='H-H, H-AI, AI-H, AI-AI')
-    parser.add_argument('--maxturns', type=int, default=100, help='Maximum number of turns')
-    parser.add_argument('--timeout', type=int, default=5, help='AI move timeout in seconds')
-    parser.add_argument('--alpha_beta', type=bool, default=True, help='Use alpha-beta pruning')
-    parser.add_argument('--heuristic_white', type=str, default='e0', help='Heuristic for white player')
-    parser.add_argument('--heuristic_black', type=str, default='e0', help='Heuristic for black player')
-    args = parser.parse_args()
+    # Prompt for parameters interactively.
+    p1 = input("Enter Player 1 mode (H for Human or AI for AI): ").strip().upper()
+    p2 = input("Enter Player 2 mode (H for Human or AI for AI): ").strip().upper()
+    playmode = f"{p1}-{p2}"
+    
+    # Prompt for AI parameters only if at least one player is AI.
+    if p1 == "AI" or p2 == "AI":
+        try:
+            timeout = float(input("Enter AI move timeout (in seconds): ").strip())
+        except ValueError:
+            timeout = 5
+        try:
+            maxturns = int(input("Enter maximum number of turns: ").strip())
+        except ValueError:
+            maxturns = 100
 
+        # For each AI, prompt for alpha-beta and heuristic.
+        if p1 == "AI":
+            ab1 = input("For Player 1 (white, AI), force alpha-beta pruning? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
+            heuristic_white = input("Enter heuristic for Player 1 (white) [e0, e1, e2]: ").strip().lower()
+            if heuristic_white not in ['e0', 'e1', 'e2']:
+                heuristic_white = 'e0'
+        else:
+            ab1 = True
+            heuristic_white = 'e0'
+        if p2 == "AI":
+            ab2 = input("For Player 2 (black, AI), force alpha-beta pruning? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
+            heuristic_black = input("Enter heuristic for Player 2 (black) [e0, e1, e2]: ").strip().lower()
+            if heuristic_black not in ['e0', 'e1', 'e2']:
+                heuristic_black = 'e0'
+        else:
+            ab2 = True
+            heuristic_black = 'e0'
+        # If both players are AI, require that both use the same pruning choice.
+        if p1 == "AI" and p2 == "AI":
+            if ab1 != ab2:
+                print("Warning: Different alpha-beta choices; defaulting to Player 1's choice.")
+            alpha_beta = ab1
+        elif p1 == "AI":
+            alpha_beta = ab1
+        elif p2 == "AI":
+            alpha_beta = ab2
+    else:
+        # Both human.
+        timeout = 5
+        maxturns = 100
+        alpha_beta = True
+        heuristic_white = 'e0'
+        heuristic_black = 'e0'
+    
     game = MiniChess(
-        playmode=args.playmode,
-        maxturns=args.maxturns,
-        timeout=args.timeout,
-        alpha_beta=args.alpha_beta,
-        heuristic_white=args.heuristic_white,
-        heuristic_black=args.heuristic_black
+        playmode=playmode,
+        maxturns=maxturns,
+        timeout=timeout,
+        alpha_beta=alpha_beta,
+        heuristic_white=heuristic_white,
+        heuristic_black=heuristic_black
     )
     game.play()
+    
+    # parser = argparse.ArgumentParser(description='Mini Chess Game')
+    # parser.add_argument('--playmode', type=str, default='H-H', help='H-H, H-AI, AI-H, AI-AI')
+    # parser.add_argument('--maxturns', type=int, default=100, help='Maximum number of turns')
+    # parser.add_argument('--timeout', type=int, default=5, help='AI move timeout in seconds')
+    # parser.add_argument('--alpha_beta', type=bool, default=True, help='Use alpha-beta pruning')
+    # parser.add_argument('--heuristic_white', type=str, default='e0', help='Heuristic for white player')
+    # parser.add_argument('--heuristic_black', type=str, default='e0', help='Heuristic for black player')
+    # args = parser.parse_args()
+
+    # game = MiniChess(
+    #     playmode=args.playmode,
+    #     maxturns=args.maxturns,
+    #     timeout=args.timeout,
+    #     alpha_beta=args.alpha_beta,
+    #     heuristic_white=args.heuristic_white,
+    #     heuristic_black=args.heuristic_black
+    # )
+    # game.play()
