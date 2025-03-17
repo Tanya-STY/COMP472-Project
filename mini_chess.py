@@ -463,8 +463,6 @@ class MiniChess:
             f"                   Heuristic (White): {self.heuristics['white']}",
             f"                   Heuristic (Black): {self.heuristics['black']}",
             f"                **************************",
-
-
             "\n               Initial Board Configuration:",
             "              ______________________________",
             self.display_board(self.current_game_state) 
@@ -474,7 +472,6 @@ class MiniChess:
         self.log("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
 
         ai_depth = 4
-
 
         while not self.game_over:
             current_player = self.current_game_state['turn']
@@ -491,7 +488,6 @@ class MiniChess:
             else:
                 move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
                 self.output_buffer.append(f"                   {current_player.capitalize()} to move: {move_str}")
-
 
             if move_str.lower() == 'exit':
                 self.log("\nGame exited by user.")
@@ -516,10 +512,11 @@ class MiniChess:
         if self.game_over:
             self.log(f"\n     ++++++++++++++++++++++++++++++++++++++++++++++++++++++\n     Game over! {self.result} \n     ++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
 
-        
         with open(self.filename, 'w') as f:
             f.write("\n".join(self.output_buffer))
         print(f"Game trace written to file: {self.filename}")
+
+        exit()
 
 
 if __name__ == "__main__":
@@ -528,103 +525,44 @@ if __name__ == "__main__":
     p2 = input("Enter Player 2 mode (H for Human or AI for AI): ").strip().upper()
     playmode = f"{p1}-{p2}"
     
-    # Prompt for timeout and max turns for all playmodes
-    try:
-        timeout = float(input("Enter move timeout (in seconds): ").strip())
-    except ValueError:
-        timeout = 5
+    # Prompt for max turns for all playmodes
     try:
         maxturns = int(input("Enter maximum number of turns: ").strip())
     except ValueError:
         maxturns = 100
 
     # Initialize AI-specific parameters
+    timeout = "N/A"  # Default timeout for human players
     alpha_beta = "N/A"
-    heuristic_white = "N/A"
-    heuristic_black = "N/A"
+    heuristic = "N/A"  # Single heuristic for both AI players
+
+    # Determine if there are one or two AI players
+    ai_count = (1 if p1 == "AI" else 0) + (1 if p2 == "AI" else 0)
 
     # Prompt for AI parameters only if at least one player is AI.
-    if p1 == "AI" or p2 == "AI":
+    if ai_count > 0:
+        # Prompt for timeout only if at least one player is AI
+        try:
+            timeout = float(input(f"Enter AI move timeout (in seconds) for the {'AI player' if ai_count == 1 else 'AI players'}: ").strip())
+        except ValueError:
+            timeout = 5  # Default timeout if invalid input
+        
         # Prompt for alpha-beta pruning once (applies to both players if they are AI)
-        alpha_beta = input("Force alpha-beta pruning for AI players? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
+        alpha_beta = input(f"Force alpha-beta pruning for the {'AI player' if ai_count == 1 else 'AI players'}? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
         
-        # Prompt for heuristics for each AI player
-        if p1 == "AI":
-            heuristic_white = input("Enter heuristic for Player 1 (white) [e0, e1, e2]: ").strip().lower()
-            if heuristic_white not in ['e0', 'e1', 'e2']:
-                heuristic_white = 'e0'
-        else:
-            heuristic_white = "N/A"
-        
-        if p2 == "AI":
-            heuristic_black = input("Enter heuristic for Player 2 (black) [e0, e1, e2]: ").strip().lower()
-            if heuristic_black not in ['e0', 'e1', 'e2']:
-                heuristic_black = 'e0'
-        else:
-            heuristic_black = "N/A"
+        # Prompt for heuristic once (applies to both AI players)
+        heuristic = input(f"Enter heuristic for the {'AI player' if ai_count == 1 else 'AI players'} [e0, e1, e2]: ").strip().lower()
+        if heuristic not in ['e0', 'e1', 'e2']:
+            heuristic = 'e0'
     else:
         # Both human.
         alpha_beta = "N/A"
-        heuristic_white = "N/A"
-        heuristic_black = "N/A"
+        heuristic = "N/A"
     
-    game = MiniChess(
-        playmode=playmode,
-        maxturns=maxturns,
-        timeout=timeout,
-        alpha_beta=alpha_beta,
-        heuristic_white=heuristic_white,
-        heuristic_black=heuristic_black
-    )
-    game.play()    # Prompt for parameters interactively.
-    p1 = input("\nEnter Player 1 mode (H for Human or AI for AI): ").strip().upper()
-    p2 = input("Enter Player 2 mode (H for Human or AI for AI): ").strip().upper()
-    playmode = f"{p1}-{p2}"
+    # Set heuristic for both players if they are AI
+    heuristic_white = heuristic if p1 == "AI" else "N/A"
+    heuristic_black = heuristic if p2 == "AI" else "N/A"
 
-    # Prompt for timeout and max turns for all playmodes
-    try:
-        timeout = float(input("Enter move timeout (in seconds): ").strip())
-    except ValueError:
-        timeout = 5
-    try:
-        maxturns = int(input("Enter maximum number of turns: ").strip())
-    except ValueError:
-        maxturns = 100
-
-    # Initialize AI-specific parameters
-    alpha_beta = True
-    heuristic_white = 'e0'
-    heuristic_black = 'e0'
-    
-    # Prompt for AI parameters only if at least one player is AI.
-    if p1 == "AI" or p2 == "AI":
-        # For each AI, prompt for alpha-beta and heuristic.
-        if p1 == "AI":
-            ab1 = input("For Player 1 (white, AI), force alpha-beta pruning? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
-            heuristic_white = input("Enter heuristic for Player 1 (white) [e0, e1, e2]: ").strip().lower()
-            if heuristic_white not in ['e0', 'e1', 'e2']:
-                heuristic_white = 'e0'
-        else:
-            ab1 = True
-            heuristic_white = 'e0'
-        if p2 == "AI":
-            ab2 = input("For Player 2 (black, AI), force alpha-beta pruning? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
-            heuristic_black = input("Enter heuristic for Player 2 (black) [e0, e1, e2]: ").strip().lower()
-            if heuristic_black not in ['e0', 'e1', 'e2']:
-                heuristic_black = 'e0'
-        else:
-            ab2 = True
-            heuristic_black = 'e0'
-        # If both players are AI, require that both use the same pruning choice.
-        if p1 == "AI" and p2 == "AI":
-            if ab1 != ab2:
-                print("Warning: Different alpha-beta choices; defaulting to Player 1's choice.")
-            alpha_beta = ab1
-        elif p1 == "AI":
-            alpha_beta = ab1
-        elif p2 == "AI":
-            alpha_beta = ab2
-    
     game = MiniChess(
         playmode=playmode,
         maxturns=maxturns,
