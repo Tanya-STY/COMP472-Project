@@ -1,7 +1,6 @@
 import math
 import copy
 import time
-import argparse
 import os
 from collections import defaultdict
 
@@ -13,8 +12,7 @@ class MiniChess:
             - playmode: string | Play mode: H-H (for now, only Human vs. Human is supported)
             - maxturns: int | Maximum number of turns
     """
-    def __init__(self, playmode='H-H', maxturns=10, timeout=5, alpha_beta=True, heuristic_white='e0', heuristic_black='e0'):
-        
+    def __init__(self, playmode='H-H', maxturns=10, timeout=5, alpha_beta=False, heuristic_white='e0', heuristic_black='e0'):
         self.current_game_state = self.init_board()
         self.playmode = playmode
         self.maxturns = maxturns
@@ -27,7 +25,7 @@ class MiniChess:
         # AI parameter
         self.timeout = timeout 
         self.alpha_beta = alpha_beta
-        self.heuristics = {'white': heuristic_white, 'black': heuristic_black}
+        self.heuristics = {'white': heuristic_white, 'black': heuristic_black}  # Initialize heuristics
         self.stats = {"states_explored": 0, "depth_counts": defaultdict(int)}
         
         self.output_buffer = []
@@ -232,45 +230,48 @@ class MiniChess:
     Returns:
         - game_state:   dictionary | Dictionary representing the modified game state
     """
-    def make_move(self, game_state, move):
+    def make_move(self, game_state, move, is_ai_evaluation=False):
         start, end = move
         start_row, start_col = start
         end_row, end_col = end
         piece = game_state["board"][start_row][start_col]
+        target_piece = game_state["board"][end_row][end_col]
+
+        # Make the move
         game_state["board"][start_row][start_col] = '.'
         game_state["board"][end_row][end_col] = piece
 
-        # Check for king capture
-        opponent = 'b' if game_state["turn"] == 'white' else 'w'
-        king_piece = any(cell == opponent + 'K' for row in game_state["board"] for cell in row)
-        if not king_piece:
-            self.game_over = True
-            self.result = f"{game_state['turn'].capitalize()} wins by capturing the king in {self.turn_count + 1} turns."
-        
         # Pawn promotion
         if piece[1] == 'p':
             if (piece[0] == 'w' and end_row == 0) or (piece[0] == 'b' and end_row == 4):
                 game_state["board"][end_row][end_col] = piece[0] + 'Q'
         
-        # Toggle turn and check for full turn completion
+        # Toggle turn
         game_state["turn"] = 'black' if game_state["turn"] == 'white' else 'white'
-        if game_state["turn"] == 'white':  # Black just moved
+        
+        # Increment turn count and update piece count history after Black's move (only during actual game progression)
+        if not is_ai_evaluation and game_state["turn"] == 'white':  # Black just moved
             self.turn_count += 1
             current_count = self.count_pieces(game_state["board"])
             self.piece_count_history.append(current_count)
+
+            # Debugging: Print turn count and piece count history
+            print(f"Turn Count: {self.turn_count}, Piece Count History: {self.piece_count_history}")
             
             # Check max turns
             if self.turn_count >= self.maxturns:
                 self.game_over = True
                 self.result = "Draw by reaching max turns"
+                return game_state
             
-            # Check 10-turn draw
-            if len(self.piece_count_history) >= 10:
+            # Check 10-turn draw (only after 10 full turns)
+            if self.turn_count >= 10:
                 last_ten = self.piece_count_history[-10:]
                 if all(x == last_ten[0] for x in last_ten):
                     self.game_over = True
                     self.result = "Draw by 10 turns with no captures"
-                        
+                    return game_state
+
         return game_state
     
     """
@@ -352,28 +353,44 @@ class MiniChess:
         (#wp + 3*#wB + 3*#wN + 9*#wQ + 999*wK) − (#bp + 3*#bB + 3*#bN + 9*#bQ + 999*bK)
         """
     def evaluate_state(self, state):
-        """Improved heuristic to prioritize captures and checkmate threats."""
-        board = state['board']
+        current_player = state['turn']
+        heuristic = self.heuristics[current_player]
+        
+        if heuristic == 'e0':
+            return self.evaluate_state_e0(state)
+        elif heuristic == 'e1':
+            return self.evaluate_state_e1(state)
+        elif heuristic == 'e2':
+            return self.evaluate_state_e2(state)
+        else:
+            return 0  # Default heuristic
+
+    def evaluate_state_e0(self, state):
         piece_values = {'p': 1, 'B': 3, 'N': 3, 'Q': 9, 'K': 999}
-        white_score, black_score = 0, 0
-
-        for row in board:
-            for piece in row:
-                if piece == '.':
+        white_score = 0
+        black_score = 0
+        
+        for row in state["board"]:
+            for cell in row:
+                if cell == '.':
                     continue
-                value = piece_values.get(piece[1], 0)
-                if piece[0] == 'w':
+                color = cell[0]
+                piece_type = cell[1]
+                value = piece_values.get(piece_type, 0)
+                if color == 'w':
                     white_score += value
-                else:
+                elif color == 'b':
                     black_score += value
-
-        # Prioritize captures: Add a bonus for each opponent piece missing
-        white_pieces = sum(1 for row in board for cell in row if cell.startswith('w'))
-        black_pieces = sum(1 for row in board for cell in row if cell.startswith('b'))
-        white_score += (16 - black_pieces) * 10  
-        black_score += (16 - white_pieces) * 10  
-
+        
         return white_score - black_score
+
+    def evaluate_state_e1(self, state):
+        # Implement heuristic e1
+        pass
+
+    def evaluate_state_e2(self, state):
+        # Implement heuristic e2
+        pass
 
     def order_moves(self, state, moves):
         """Prioritize capturing moves."""
@@ -383,14 +400,16 @@ class MiniChess:
             return 10 if end_piece != '.' else 0  
         return sorted(moves, key=move_value, reverse=True)
 
+    # Minimax with Alpha-Beta pruning
     def minimax(self, state, depth, maximizing, alpha, beta, start_time, time_limit):
-        """Minimax with Alpha-Beta pruning that prioritizes capturing and checkmate."""
         if time.time() - start_time >= time_limit:
             return self.evaluate_state(state)
+        
         if depth == 0 or self.game_over:
             return self.evaluate_state(state)
 
         moves = self.order_moves(state, self.valid_moves(state))
+        
         if not moves:
             return self.evaluate_state(state)
 
@@ -398,7 +417,7 @@ class MiniChess:
             value = -math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
-                self.make_move(new_state, move)
+                self.make_move(new_state, move, is_ai_evaluation=True)  # Pass is_ai_evaluation=True
                 value = max(value, self.minimax(new_state, depth - 1, False, alpha, beta, start_time, time_limit))
                 if self.alpha_beta:
                     alpha = max(alpha, value)
@@ -409,7 +428,7 @@ class MiniChess:
             value = math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
-                self.make_move(new_state, move)
+                self.make_move(new_state, move, is_ai_evaluation=True)  # Pass is_ai_evaluation=True
                 value = min(value, self.minimax(new_state, depth - 1, True, alpha, beta, start_time, time_limit))
                 if self.alpha_beta:
                     beta = min(beta, value)
@@ -418,7 +437,6 @@ class MiniChess:
             return value
 
     def get_best_move(self, state, max_depth, time_limit):
-        """Selects the best move based on the minimax evaluation."""
         start_time = time.time()
         best_move = None
         best_value = -math.inf if state["turn"] == "white" else math.inf
@@ -429,7 +447,7 @@ class MiniChess:
             if time.time() - start_time > time_limit:
                 break
             new_state = copy.deepcopy(state)
-            self.make_move(new_state, move)
+            self.make_move(new_state, move, is_ai_evaluation=True)  # Pass is_ai_evaluation=True
             value = self.minimax(new_state, max_depth - 1, state["turn"] == "black", -math.inf, math.inf, start_time, time_limit)
 
             if state["turn"] == "white" and value > best_value:
@@ -533,8 +551,9 @@ if __name__ == "__main__":
 
     # Initialize AI-specific parameters
     timeout = "N/A"  # Default timeout for human players
-    alpha_beta = "N/A"
-    heuristic = "N/A"  # Single heuristic for both AI players
+    alpha_beta = False
+    heuristic_white = "N/A"  # Default heuristic for human players
+    heuristic_black = "N/A"  # Default heuristic for human players
 
     # Determine if there are one or two AI players
     ai_count = (1 if p1 == "AI" else 0) + (1 if p2 == "AI" else 0)
@@ -550,19 +569,17 @@ if __name__ == "__main__":
         # Prompt for alpha-beta pruning once (applies to both players if they are AI)
         alpha_beta = input(f"Force alpha-beta pruning for the {'AI player' if ai_count == 1 else 'AI players'}? (true/false): ").strip().lower() in ['true', 't', 'yes', '1']
         
-        # Prompt for heuristic once (applies to both AI players)
-        heuristic = input(f"Enter heuristic for the {'AI player' if ai_count == 1 else 'AI players'} [e0, e1, e2]: ").strip().lower()
-        if heuristic not in ['e0', 'e1', 'e2']:
-            heuristic = 'e0'
-    else:
-        # Both human.
-        alpha_beta = "N/A"
-        heuristic = "N/A"
+        # Prompt for heuristic for each AI player
+        if p1 == "AI":
+            heuristic_white = input(f"Enter heuristic for White AI [e0, e1, e2]: ").strip().lower()
+            if heuristic_white not in ['e0', 'e1', 'e2']:
+                heuristic_white = 'e0'
+        if p2 == "AI":
+            heuristic_black = input(f"Enter heuristic for Black AI [e0, e1, e2]: ").strip().lower()
+            if heuristic_black not in ['e0', 'e1', 'e2']:
+                heuristic_black = 'e0'
     
-    # Set heuristic for both players if they are AI
-    heuristic_white = heuristic if p1 == "AI" else "N/A"
-    heuristic_black = heuristic if p2 == "AI" else "N/A"
-
+    # Initialize the game with the correct heuristics
     game = MiniChess(
         playmode=playmode,
         maxturns=maxturns,
