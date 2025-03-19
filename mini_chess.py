@@ -237,6 +237,22 @@ class MiniChess:
         piece = game_state["board"][start_row][start_col]
         target_piece = game_state["board"][end_row][end_col]
 
+        # Log the move and target piece only during actual gameplay
+        if not is_ai_evaluation:
+            self.log(f"Moving {piece} from {self.convert_to_notation(start)} to {self.convert_to_notation(end)}")
+            if target_piece != '.':
+                self.log(f"Capturing {target_piece} at {self.convert_to_notation(end)}")
+
+        # Check if the move captures the opponent's king (only during actual gameplay, not AI evaluation)
+        if not is_ai_evaluation and target_piece != '.':  # Target square is not empty
+            if target_piece[1] == 'K':  # Target piece is a king
+                opponent_color = 'b' if game_state["turn"] == 'white' else 'w'
+                if target_piece[0] == opponent_color:  # Target piece is the opponent's king
+                    self.log(f"Game over! {game_state['turn'].capitalize()} wins by capturing the king.")
+                    self.game_over = True
+                    self.result = f"{game_state['turn'].capitalize()} wins by capturing the king in {self.turn_count + 1} turns."
+                    return game_state
+
         # Make the move
         game_state["board"][start_row][start_col] = '.'
         game_state["board"][end_row][end_col] = piece
@@ -245,10 +261,10 @@ class MiniChess:
         if piece[1] == 'p':
             if (piece[0] == 'w' and end_row == 0) or (piece[0] == 'b' and end_row == 4):
                 game_state["board"][end_row][end_col] = piece[0] + 'Q'
-        
+
         # Toggle turn
         game_state["turn"] = 'black' if game_state["turn"] == 'white' else 'white'
-        
+
         # Increment turn count and update piece count history after Black's move (only during actual game progression)
         if not is_ai_evaluation and game_state["turn"] == 'white':  # Black just moved
             self.turn_count += 1
@@ -256,14 +272,14 @@ class MiniChess:
             self.piece_count_history.append(current_count)
 
             # Debugging: Print turn count and piece count history
-            print(f"Turn Count: {self.turn_count}, Piece Count History: {self.piece_count_history}")
-            
+            self.log(f"Turn Count: {self.turn_count}, Piece Count History: {self.piece_count_history}")
+
             # Check max turns
             if self.turn_count >= self.maxturns:
                 self.game_over = True
                 self.result = "Draw by reaching max turns"
                 return game_state
-            
+
             # Check 10-turn draw (only after 10 full turns)
             if self.turn_count >= 10:
                 last_ten = self.piece_count_history[-10:]
@@ -403,38 +419,44 @@ class MiniChess:
     # Minimax with Alpha-Beta pruning
     def minimax(self, state, depth, maximizing, alpha, beta, start_time, time_limit):
         if time.time() - start_time >= time_limit:
-            return self.evaluate_state(state)
+            return self.evaluate_state(state), alpha, beta
         
         if depth == 0 or self.game_over:
-            return self.evaluate_state(state)
+            return self.evaluate_state(state), alpha, beta
 
         moves = self.order_moves(state, self.valid_moves(state))
         
         if not moves:
-            return self.evaluate_state(state)
+            return self.evaluate_state(state), alpha, beta
 
         if maximizing:
             value = -math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
-                self.make_move(new_state, move, is_ai_evaluation=True)  # Pass is_ai_evaluation=True
-                value = max(value, self.minimax(new_state, depth - 1, False, alpha, beta, start_time, time_limit))
+                self.make_move(new_state, move, is_ai_evaluation=True)
+                eval_score, new_alpha, new_beta = self.minimax(new_state, depth - 1, False, alpha, beta, start_time, time_limit)
+                value = max(value, eval_score)
+                
+                # Alpha-Beta pruning
                 if self.alpha_beta:
                     alpha = max(alpha, value)
                     if alpha >= beta:
-                        break
-            return value
+                        break  # Beta cutoff
+            return value, alpha, beta
         else:
             value = math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
-                self.make_move(new_state, move, is_ai_evaluation=True)  # Pass is_ai_evaluation=True
-                value = min(value, self.minimax(new_state, depth - 1, True, alpha, beta, start_time, time_limit))
+                self.make_move(new_state, move, is_ai_evaluation=True)
+                eval_score, new_alpha, new_beta = self.minimax(new_state, depth - 1, True, alpha, beta, start_time, time_limit)
+                value = min(value, eval_score)
+                
+                # Alpha-Beta pruning
                 if self.alpha_beta:
                     beta = min(beta, value)
                     if beta <= alpha:
-                        break
-            return value
+                        break  # Alpha cutoff
+            return value, alpha, beta
 
     def get_best_move(self, state, max_depth, time_limit):
         start_time = time.time()
@@ -447,8 +469,10 @@ class MiniChess:
             if time.time() - start_time > time_limit:
                 break
             new_state = copy.deepcopy(state)
-            self.make_move(new_state, move, is_ai_evaluation=True)  # Pass is_ai_evaluation=True
-            value = self.minimax(new_state, max_depth - 1, state["turn"] == "black", -math.inf, math.inf, start_time, time_limit)
+            self.make_move(new_state, move, is_ai_evaluation=True)
+            
+            # Call minimax with alpha and beta for Alpha-Beta pruning
+            value, alpha, beta = self.minimax(new_state, max_depth - 1, state["turn"] == "black", -math.inf, math.inf, start_time, time_limit)
 
             if state["turn"] == "white" and value > best_value:
                 best_value = value
@@ -457,8 +481,21 @@ class MiniChess:
                 best_value = value
                 best_move = move
 
-        return best_move
+        # Log the final move chosen by the AI
+        if best_move:
+            time_taken = time.time() - start_time
+            self.log(f"AI chooses: {self.convert_to_notation(best_move[0])} to {self.convert_to_notation(best_move[1])}")
+            self.log(f"Time taken: {time_taken:.2f} seconds")
+            self.log(f"Final Heuristic Score: {self.evaluate_state(state)}")
+            
+            # Log Alpha-Beta score if Alpha-Beta pruning is enabled
+            if self.alpha_beta:
+                self.log(f"Final Alpha-Beta Score: Alpha={alpha}, Beta={beta}")
+            else:
+                self.log(f"Final Minimax Score: {best_value}")
 
+        return best_move
+    
     """
     Main game loop handling player input and game progression
 
@@ -496,12 +533,23 @@ class MiniChess:
             is_ai_turn = (current_player == 'white' and white_is_ai) or (current_player == 'black' and black_is_ai)
 
             if is_ai_turn:
+                move_start_time = time.time()
                 move = self.get_best_move(self.current_game_state, ai_depth, self.timeout)
+                move_time_taken = time.time() - move_start_time
+
                 if not move:
                     self.log("No valid moves found. Game over.")
                     break
+
                 move_str = f"{self.convert_to_notation(move[0])} {self.convert_to_notation(move[1])}"
                 self.log(f"                      AI plays: {move_str}")
+                self.log(f"                      Time taken: {move_time_taken:.2f} seconds")
+
+                # Log heuristic score of the resulting board
+                new_state = copy.deepcopy(self.current_game_state)
+                self.make_move(new_state, move, is_ai_evaluation=True)
+                heuristic_score = self.evaluate_state(new_state)
+                self.log(f"                      Heuristic Score of Resulting Board: {heuristic_score}")
             
             else:
                 move_str = input(f"                   {current_player.capitalize()} to move: ").strip()
