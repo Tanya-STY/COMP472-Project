@@ -26,7 +26,7 @@ class MiniChess:
         self.timeout = timeout 
         self.alpha_beta = alpha_beta
         self.heuristics = {'white': heuristic_white, 'black': heuristic_black}  # Initialize heuristics
-        self.stats = {"states_explored": 0, "depth_counts": defaultdict(int)}
+        self.stats = {"states_explored": 0, "depth_counts": defaultdict(int), "total_branches": 0, "total_parent_nodes": 0}  
         
         self.output_buffer = []
         self.filename = self.get_next_filename()
@@ -243,19 +243,26 @@ class MiniChess:
             if target_piece != '.':
                 self.log(f"Capturing {target_piece} at {self.convert_to_notation(end)}")
 
-        # Check if the move captures the opponent's king (only during actual gameplay, not AI evaluation)
-        if not is_ai_evaluation and target_piece != '.':  # Target square is not empty
-            if target_piece[1] == 'K':  # Target piece is a king
+        # Make the move FIRST
+        game_state["board"][start_row][start_col] = '.'
+        game_state["board"][end_row][end_col] = piece
+
+        # Check if the move captured the opponent's king
+        if not is_ai_evaluation and target_piece != '.':
+            if target_piece[1] == 'K':
                 opponent_color = 'b' if game_state["turn"] == 'white' else 'w'
-                if target_piece[0] == opponent_color:  # Target piece is the opponent's king
+                if target_piece[0] == opponent_color:
                     self.log(f"Game over! {game_state['turn'].capitalize()} wins by capturing the king.")
                     self.game_over = True
                     self.result = f"{game_state['turn'].capitalize()} wins by capturing the king in {self.turn_count + 1} turns."
+                    
+                    # Still process promotions and turn toggle for accurate board state
+                    if piece[1] == 'p':
+                        if (piece[0] == 'w' and end_row == 0) or (piece[0] == 'b' and end_row == 4):
+                            game_state["board"][end_row][end_col] = piece[0] + 'Q'
+                    
+                    game_state["turn"] = 'black' if game_state["turn"] == 'white' else 'white'
                     return game_state
-
-        # Make the move
-        game_state["board"][start_row][start_col] = '.'
-        game_state["board"][end_row][end_col] = piece
 
         # Pawn promotion
         if piece[1] == 'p':
@@ -265,31 +272,24 @@ class MiniChess:
         # Toggle turn
         game_state["turn"] = 'black' if game_state["turn"] == 'white' else 'white'
 
-        # Increment turn count and update piece count history after Black's move (only during actual game progression)
-        if not is_ai_evaluation and game_state["turn"] == 'white':  # Black just moved
+        # Update turn count after Black's move
+        if not is_ai_evaluation and game_state["turn"] == 'white':
             self.turn_count += 1
             current_count = self.count_pieces(game_state["board"])
             self.piece_count_history.append(current_count)
 
-            # Debugging: Print turn count and piece count history
-            self.log(f"Turn Count: {self.turn_count}, Piece Count History: {self.piece_count_history}")
-
-            # Check max turns
             if self.turn_count >= self.maxturns:
                 self.game_over = True
                 self.result = "Draw by reaching max turns"
-                return game_state
-
-            # Check 10-turn draw (only after 10 full turns)
-            if self.turn_count >= 10:
+            
+            elif self.turn_count >= 10:
                 last_ten = self.piece_count_history[-10:]
                 if all(x == last_ten[0] for x in last_ten):
                     self.game_over = True
                     self.result = "Draw by 10 turns with no captures"
-                    return game_state
 
         return game_state
-    
+        
     """
     Parse the input string and modify it into board coordinates
 
@@ -324,23 +324,6 @@ class MiniChess:
         row, col = pos
         return f"{chr(col + ord('A'))}{5 - row}"
     
-    """
-    Write the board state to a file
-
-    Args:
-        - file: file object | File object to write to
-        - game_state: dictionary | Dictionary representing the current game state
-    Returns:
-        - None
-    """
-    def write_board_to_file(self, file, game_state):
-        file.write("\n                  A     B    C    D    E\n")
-        file.write("                +----+----+----+----+----+\n")
-        for i, row in enumerate(game_state["board"], start=1):
-            row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}\n"
-            file.write(row_str)
-            file.write("                +----+----+----+----+----+\n")
-        file.write("                  A     B    C    D    E\n")
 
 
     """
@@ -356,7 +339,7 @@ class MiniChess:
         base_name = os.path.join(base_dir, "gameTrace")
         index = 1
         while True:
-            filename = f"{base_name}-{index}.txt"
+            filename = f"{base_name}{index}-{alpha_beta}-{timeout}-{maxturns}.txt"
             if not os.path.exists(filename):
                 self.log(f"\nCreating game trace file: {filename}\n")
                 return filename
@@ -401,27 +384,98 @@ class MiniChess:
         return white_score - black_score
 
     def evaluate_state_e1(self, state):
-        # Implement heuristic e1
-        pass
+        # Material score from e0
+        material_score = self.evaluate_state_e0(state)
+        
+        positional_score = 0
+        
+        # Positional tables
+        pawn_white_pos = [
+            [5, 5, 5, 5, 5],  # Promotion row (row 0)
+            [4, 4, 4, 4, 4],
+            [3, 3, 3, 3, 3],
+            [2, 2, 2, 2, 2],  # Initial position (row 3)
+            [1, 1, 1, 1, 1],
+        ]
+        
+        pawn_black_pos = [
+            [1, 1, 1, 1, 1],
+            [2, 2, 2, 2, 2],  # Initial position (row 1)
+            [3, 3, 3, 3, 3],
+            [4, 4, 4, 4, 4],
+            [5, 5, 5, 5, 5],  # Promotion row (row 4)
+        ]
+        
+        central_scores = [
+            [1, 1, 2, 1, 1],
+            [1, 2, 3, 2, 1],
+            [2, 3, 4, 3, 2],
+            [1, 2, 3, 2, 1],
+            [1, 1, 2, 1, 1],
+        ]
+        
+        for row_idx in range(5):
+            for col_idx in range(5):
+                piece = state["board"][row_idx][col_idx]
+                if piece == '.':
+                    continue
+                color, piece_type = piece[0], piece[1]
+                
+                if piece_type == 'p':
+                    if color == 'w':
+                        positional_score += pawn_white_pos[row_idx][col_idx]
+                    else:
+                        positional_score += pawn_black_pos[row_idx][col_idx]
+                else:
+                    # Apply central score for non-pawn pieces
+                    positional_score += central_scores[row_idx][col_idx]
+        
+        # Weight positional score to balance with material
+        return material_score + positional_score * 0.5
 
     def evaluate_state_e2(self, state):
-        # Implement heuristic e2
-        pass
+        # Material score from e0
+        material_score = self.evaluate_state_e0(state)
+        
+        # Temporarily calculate mobility for both players
+        original_turn = state['turn']
+        
+        # Calculate white's mobility
+        state['turn'] = 'white'
+        white_moves = len(self.valid_moves(state))
+        
+        # Calculate black's mobility
+        state['turn'] = 'black'
+        black_moves = len(self.valid_moves(state))
+        
+        # Restore original turn
+        state['turn'] = original_turn
+        
+        # Mobility score with scaling factor
+        mobility_score = white_moves - black_moves
+        return material_score + 0.2 * mobility_score
 
     def order_moves(self, state, moves):
-        """Prioritize capturing moves."""
+        """Prioritize capturing moves based on piece values."""
+        piece_values = {'p': 1, 'B': 3, 'N': 3, 'Q': 9, 'K': 999}
         def move_value(move):
             _, end_pos = move
             end_piece = state["board"][end_pos[0]][end_pos[1]]
-            return 10 if end_piece != '.' else 0  
+            if end_piece == '.':
+                return 0
+            return piece_values.get(end_piece[1], 0)
         return sorted(moves, key=move_value, reverse=True)
 
     # Minimax with Alpha-Beta pruning
-    def minimax(self, state, depth, maximizing, alpha, beta, start_time, time_limit):
+    def minimax(self, state, current_depth, max_depth, maximizing, alpha, beta, start_time, time_limit):
+        # Increment the states explored counter and depth counts
+        self.stats["states_explored"] += 1
+        self.stats["depth_counts"][current_depth] += 1
+
         if time.time() - start_time >= time_limit:
             return self.evaluate_state(state), alpha, beta
         
-        if depth == 0 or self.game_over:
+        if current_depth == max_depth or self.game_over:
             return self.evaluate_state(state), alpha, beta
 
         moves = self.order_moves(state, self.valid_moves(state))
@@ -429,73 +483,134 @@ class MiniChess:
         if not moves:
             return self.evaluate_state(state), alpha, beta
 
+        # Track branching factor
+        num_branches = len(moves)
+        self.stats["total_branches"] += num_branches
+        self.stats["total_parent_nodes"] += 1
+
         if maximizing:
             value = -math.inf
             for move in moves:
-                new_state = copy.deepcopy(state)
-                self.make_move(new_state, move, is_ai_evaluation=True)
-                eval_score, new_alpha, new_beta = self.minimax(new_state, depth - 1, False, alpha, beta, start_time, time_limit)
+                new_state = self.make_move(copy.deepcopy(state), move, is_ai_evaluation=True)
+                eval_score, _, _ = self.minimax(new_state, current_depth + 1, max_depth, False, alpha, beta, start_time, time_limit)
                 value = max(value, eval_score)
-                
-                # Alpha-Beta pruning
                 if self.alpha_beta:
                     alpha = max(alpha, value)
                     if alpha >= beta:
-                        break  # Beta cutoff
+                        break
             return value, alpha, beta
         else:
             value = math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
                 self.make_move(new_state, move, is_ai_evaluation=True)
-                eval_score, new_alpha, new_beta = self.minimax(new_state, depth - 1, True, alpha, beta, start_time, time_limit)
+                eval_score, new_alpha, new_beta = self.minimax(new_state, current_depth + 1, max_depth, True, alpha, beta, start_time, time_limit)
                 value = min(value, eval_score)
-                
-                # Alpha-Beta pruning
                 if self.alpha_beta:
                     beta = min(beta, value)
                     if beta <= alpha:
-                        break  # Alpha cutoff
+                        break
             return value, alpha, beta
 
-    def get_best_move(self, state, max_depth, time_limit):
+    def get_best_move(self, state, time_limit):
+        # Reset counters for this move
+        self.stats["states_explored"] = 0
+        self.stats["depth_counts"] = defaultdict(int)
+        self.stats["total_branches"] = 0
+        self.stats["total_parent_nodes"] = 0
+
         start_time = time.time()
         best_move = None
         best_value = -math.inf if state["turn"] == "white" else math.inf
-
         moves = self.order_moves(state, self.valid_moves(state))
+        if not moves:
+            return None
 
-        for move in moves:
-            if time.time() - start_time > time_limit:
-                break
-            new_state = copy.deepcopy(state)
-            self.make_move(new_state, move, is_ai_evaluation=True)
-            
-            # Call minimax with alpha and beta for Alpha-Beta pruning
-            value, alpha, beta = self.minimax(new_state, max_depth - 1, state["turn"] == "black", -math.inf, math.inf, start_time, time_limit)
+        max_depth = 3  # Maximum allowed depth
+        current_max_depth = 1  # Start with depth 1
+        time_remaining = time_limit
 
-            if state["turn"] == "white" and value > best_value:
-                best_value = value
-                best_move = move
-            elif state["turn"] == "black" and value < best_value:
-                best_value = value
-                best_move = move
+        while time_remaining > 0 and current_max_depth <= max_depth:
+            depth_start_time = time.time()
+            self.log(f"Searching at depth {current_max_depth}...")
+            current_best_move = None
+            current_best_value = -math.inf if state["turn"] == "white" else math.inf
 
-        # Log the final move chosen by the AI
-        if best_move:
-            time_taken = time.time() - start_time
-            self.log(f"AI chooses: {self.convert_to_notation(best_move[0])} to {self.convert_to_notation(best_move[1])}")
-            self.log(f"Time taken: {time_taken:.2f} seconds")
-            self.log(f"Final Heuristic Score: {self.evaluate_state(state)}")
-            
-            # Log Alpha-Beta score if Alpha-Beta pruning is enabled
-            if self.alpha_beta:
-                self.log(f"Final Alpha-Beta Score: Alpha={alpha}, Beta={beta}")
+            for move in moves:
+                if time.time() - start_time > time_limit:
+                    break
+
+                new_state = copy.deepcopy(state)
+                self.make_move(new_state, move, is_ai_evaluation=True)
+                eval_score, alpha, beta = self.minimax(
+                    new_state,
+                    current_depth=0,
+                    max_depth=current_max_depth,
+                    maximizing=(state["turn"] == "black"),
+                    alpha=-math.inf,
+                    beta=math.inf,
+                    start_time=start_time,
+                    time_limit=time_limit
+                )
+
+                # Update best move for current depth
+                if (state["turn"] == "white" and eval_score > current_best_value) or \
+                (state["turn"] == "black" and eval_score < current_best_value):
+                    current_best_value = eval_score
+                    current_best_move = move
+
+            # Update global best move if depth completed
+            if current_best_move:
+                best_move = current_best_move
+                best_value = current_best_value
+                self.log(f"Reached search depth: {current_max_depth}")
+                current_max_depth += 1
             else:
-                self.log(f"Final Minimax Score: {best_value}")
+                break
+
+            # Update remaining time
+            elapsed = time.time() - start_time
+            time_remaining = time_limit - elapsed
+
+        # Final time check
+        total_time = time.time() - start_time
+        if total_time > time_limit:
+            self.log("AI exceeded timeout! Forfeiting turn.")
+            return None
+
+        # Log results
+        if best_move:
+            self.log(f"AI chooses: {self.convert_to_notation(best_move[0])} to {self.convert_to_notation(best_move[1])}")
+            self.log(f"Minimax/Alpha-Beta Search Score: {best_value}")
+            self.log(f"Time taken: {total_time:.2f} seconds")
+
+            # Cumulative states explored
+            self.log(f"Cumulative states explored: {self.stats['states_explored']}")
+
+            # States explored by depth
+            self.log("Cumulative states explored by depth:")
+            max_depth_reached = max(self.stats["depth_counts"].keys(), default=0)
+            for d in range(max_depth_reached + 1):
+                count = self.stats["depth_counts"].get(d, 0)
+                self.log(f"  Depth {d}: {count}")
+
+            # Percentage of states explored by depth
+            total_states = self.stats["states_explored"]
+            self.log("Cumulative % states explored by depth:")
+            for d in range(max_depth_reached + 1):
+                count = self.stats["depth_counts"].get(d, 0)
+                percentage = (count / total_states) * 100 if total_states else 0
+                self.log(f"  Depth {d}: {percentage:.1f}%")
+
+            # Average branching factor
+            if self.stats["total_parent_nodes"] > 0:
+                avg_branch = self.stats["total_branches"] / self.stats["total_parent_nodes"]
+            else:
+                avg_branch = 0
+            self.log(f"Average branching factor: {avg_branch:.1f}")
 
         return best_move
-    
+
     """
     Main game loop handling player input and game progression
 
@@ -526,7 +641,6 @@ class MiniChess:
 
         self.log("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
 
-        ai_depth = 4
 
         while not self.game_over:
             current_player = self.current_game_state['turn']
@@ -534,11 +648,13 @@ class MiniChess:
 
             if is_ai_turn:
                 move_start_time = time.time()
-                move = self.get_best_move(self.current_game_state, ai_depth, self.timeout)
+                move = self.get_best_move(self.current_game_state, self.timeout)
                 move_time_taken = time.time() - move_start_time
 
                 if not move:
-                    self.log("No valid moves found. Game over.")
+                    self.log(f"{current_player} AI exceeded timeout! Automatic loss.")
+                    self.game_over = True
+                    self.result = f"{current_player} AI lost by timeout."
                     break
 
                 move_str = f"{self.convert_to_notation(move[0])} {self.convert_to_notation(move[1])}"
