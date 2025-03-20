@@ -26,7 +26,7 @@ class MiniChess:
         self.timeout = timeout 
         self.alpha_beta = alpha_beta
         self.heuristics = {'white': heuristic_white, 'black': heuristic_black}  # Initialize heuristics
-        self.stats = {"states_explored": 0, "depth_counts": defaultdict(int)}
+        self.stats = {"states_explored": 0, "depth_counts": defaultdict(int), "total_branches": 0, "total_parent_nodes": 0}  
         
         self.output_buffer = []
         self.filename = self.get_next_filename()
@@ -484,11 +484,15 @@ class MiniChess:
         return sorted(moves, key=move_value, reverse=True)
 
     # Minimax with Alpha-Beta pruning
-    def minimax(self, state, depth, maximizing, alpha, beta, start_time, time_limit):
+    def minimax(self, state, current_depth, max_depth, maximizing, alpha, beta, start_time, time_limit):
+        # Increment the states explored counter and depth counts
+        self.stats["states_explored"] += 1
+        self.stats["depth_counts"][current_depth] += 1
+
         if time.time() - start_time >= time_limit:
             return self.evaluate_state(state), alpha, beta
         
-        if depth == 0 or self.game_over:
+        if current_depth == max_depth or self.game_over:
             return self.evaluate_state(state), alpha, beta
 
         moves = self.order_moves(state, self.valid_moves(state))
@@ -496,36 +500,43 @@ class MiniChess:
         if not moves:
             return self.evaluate_state(state), alpha, beta
 
+        # Track branching factor
+        num_branches = len(moves)
+        self.stats["total_branches"] += num_branches
+        self.stats["total_parent_nodes"] += 1
+
         if maximizing:
             value = -math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
                 self.make_move(new_state, move, is_ai_evaluation=True)
-                eval_score, new_alpha, new_beta = self.minimax(new_state, depth - 1, False, alpha, beta, start_time, time_limit)
+                eval_score, new_alpha, new_beta = self.minimax(new_state, current_depth + 1, max_depth, False, alpha, beta, start_time, time_limit)
                 value = max(value, eval_score)
-                
-                # Alpha-Beta pruning
                 if self.alpha_beta:
                     alpha = max(alpha, value)
                     if alpha >= beta:
-                        break  # Beta cutoff
+                        break
             return value, alpha, beta
         else:
             value = math.inf
             for move in moves:
                 new_state = copy.deepcopy(state)
                 self.make_move(new_state, move, is_ai_evaluation=True)
-                eval_score, new_alpha, new_beta = self.minimax(new_state, depth - 1, True, alpha, beta, start_time, time_limit)
+                eval_score, new_alpha, new_beta = self.minimax(new_state, current_depth + 1, max_depth, True, alpha, beta, start_time, time_limit)
                 value = min(value, eval_score)
-                
-                # Alpha-Beta pruning
                 if self.alpha_beta:
                     beta = min(beta, value)
                     if beta <= alpha:
-                        break  # Alpha cutoff
+                        break
             return value, alpha, beta
 
     def get_best_move(self, state, time_limit):
+        # Reset counters for this move
+        self.stats["states_explored"] = 0
+        self.stats["depth_counts"] = defaultdict(int)
+        self.stats["total_branches"] = 0
+        self.stats["total_parent_nodes"] = 0
+
         start_time = time.time()
         best_move = None
         best_value = -math.inf if state["turn"] == "white" else math.inf
@@ -533,53 +544,53 @@ class MiniChess:
         if not moves:
             return None
 
-        max_depth = 4  # Set a maximum depth limit
-        depth = 1
-        time_remaining = time_limit  # Track remaining time dynamically
-        while time_remaining > 0 and depth <= max_depth:  # Exit if no time left or max depth reached
+        max_depth = 4  # Maximum allowed depth
+        current_max_depth = 1  # Start with depth 1
+        time_remaining = time_limit
+
+        while time_remaining > 0 and current_max_depth <= max_depth:
             depth_start_time = time.time()
-            self.log(f"Searching at depth {depth}...")
+            self.log(f"Searching at depth {current_max_depth}...")
             current_best_move = None
             current_best_value = -math.inf if state["turn"] == "white" else math.inf
 
             for move in moves:
-                # Check time before processing each move
                 if time.time() - start_time > time_limit:
                     break
 
                 new_state = copy.deepcopy(state)
                 self.make_move(new_state, move, is_ai_evaluation=True)
-                value, alpha, beta = self.minimax(
-                    new_state, 
-                    depth - 1, 
-                    state["turn"] == "black", 
-                    -math.inf, 
-                    math.inf, 
-                    start_time, 
-                    time_limit
+                eval_score, alpha, beta = self.minimax(
+                    new_state,
+                    current_depth=0,
+                    max_depth=current_max_depth,
+                    maximizing=(state["turn"] == "black"),
+                    alpha=-math.inf,
+                    beta=math.inf,
+                    start_time=start_time,
+                    time_limit=time_limit
                 )
 
                 # Update best move for current depth
-                if state["turn"] == "white" and value > current_best_value:
-                    current_best_value = value
-                    current_best_move = move
-                elif state["turn"] == "black" and value < current_best_value:
-                    current_best_value = value
+                if (state["turn"] == "white" and eval_score > current_best_value) or \
+                (state["turn"] == "black" and eval_score < current_best_value):
+                    current_best_value = eval_score
                     current_best_move = move
 
             # Update global best move if depth completed
             if current_best_move:
                 best_move = current_best_move
                 best_value = current_best_value
-                depth += 1
+                self.log(f"Reached search depth: {current_max_depth}")
+                current_max_depth += 1
             else:
-                break  # No time or no valid moves
+                break
 
-            # Calculate remaining time after this depth
+            # Update remaining time
             elapsed = time.time() - start_time
             time_remaining = time_limit - elapsed
 
-        # Final time check to enforce strict timeout
+        # Final time check
         total_time = time.time() - start_time
         if total_time > time_limit:
             self.log("AI exceeded timeout! Forfeiting turn.")
@@ -587,12 +598,37 @@ class MiniChess:
 
         # Log results
         if best_move:
-            self.log(f"Reached search depth: {depth-1}")
             self.log(f"AI chooses: {self.convert_to_notation(best_move[0])} to {self.convert_to_notation(best_move[1])}")
             self.log(f"Minimax/Alpha-Beta Search Score: {best_value}")
             self.log(f"Time taken: {total_time:.2f} seconds")
 
+            # Cumulative states explored
+            self.log(f"Cumulative states explored: {self.stats['states_explored']}")
+
+            # States explored by depth
+            self.log("Cumulative states explored by depth:")
+            max_depth_reached = max(self.stats["depth_counts"].keys(), default=0)
+            for d in range(max_depth_reached + 1):
+                count = self.stats["depth_counts"].get(d, 0)
+                self.log(f"  Depth {d}: {count}")
+
+            # Percentage of states explored by depth
+            total_states = self.stats["states_explored"]
+            self.log("Cumulative % states explored by depth:")
+            for d in range(max_depth_reached + 1):
+                count = self.stats["depth_counts"].get(d, 0)
+                percentage = (count / total_states) * 100 if total_states else 0
+                self.log(f"  Depth {d}: {percentage:.1f}%")
+
+            # Average branching factor
+            if self.stats["total_parent_nodes"] > 0:
+                avg_branch = self.stats["total_branches"] / self.stats["total_parent_nodes"]
+            else:
+                avg_branch = 0
+            self.log(f"Average branching factor: {avg_branch:.1f}")
+
         return best_move
+
     """
     Main game loop handling player input and game progression
 
