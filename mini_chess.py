@@ -401,19 +401,86 @@ class MiniChess:
         return white_score - black_score
 
     def evaluate_state_e1(self, state):
-        # Implement heuristic e1
-        pass
+        # Material score from e0
+        material_score = self.evaluate_state_e0(state)
+        
+        positional_score = 0
+        
+        # Positional tables
+        pawn_white_pos = [
+            [5, 5, 5, 5, 5],  # Promotion row (row 0)
+            [4, 4, 4, 4, 4],
+            [3, 3, 3, 3, 3],
+            [2, 2, 2, 2, 2],  # Initial position (row 3)
+            [1, 1, 1, 1, 1],
+        ]
+        
+        pawn_black_pos = [
+            [1, 1, 1, 1, 1],
+            [2, 2, 2, 2, 2],  # Initial position (row 1)
+            [3, 3, 3, 3, 3],
+            [4, 4, 4, 4, 4],
+            [5, 5, 5, 5, 5],  # Promotion row (row 4)
+        ]
+        
+        central_scores = [
+            [1, 1, 2, 1, 1],
+            [1, 2, 3, 2, 1],
+            [2, 3, 4, 3, 2],
+            [1, 2, 3, 2, 1],
+            [1, 1, 2, 1, 1],
+        ]
+        
+        for row_idx in range(5):
+            for col_idx in range(5):
+                piece = state["board"][row_idx][col_idx]
+                if piece == '.':
+                    continue
+                color, piece_type = piece[0], piece[1]
+                
+                if piece_type == 'p':
+                    if color == 'w':
+                        positional_score += pawn_white_pos[row_idx][col_idx]
+                    else:
+                        positional_score += pawn_black_pos[row_idx][col_idx]
+                else:
+                    # Apply central score for non-pawn pieces
+                    positional_score += central_scores[row_idx][col_idx]
+        
+        # Weight positional score to balance with material
+        return material_score + positional_score * 0.5
 
     def evaluate_state_e2(self, state):
-        # Implement heuristic e2
-        pass
+        # Material score from e0
+        material_score = self.evaluate_state_e0(state)
+        
+        # Temporarily calculate mobility for both players
+        original_turn = state['turn']
+        
+        # Calculate white's mobility
+        state['turn'] = 'white'
+        white_moves = len(self.valid_moves(state))
+        
+        # Calculate black's mobility
+        state['turn'] = 'black'
+        black_moves = len(self.valid_moves(state))
+        
+        # Restore original turn
+        state['turn'] = original_turn
+        
+        # Mobility score with scaling factor
+        mobility_score = white_moves - black_moves
+        return material_score + 0.2 * mobility_score
 
     def order_moves(self, state, moves):
-        """Prioritize capturing moves."""
+        """Prioritize capturing moves based on piece values."""
+        piece_values = {'p': 1, 'B': 3, 'N': 3, 'Q': 9, 'K': 999}
         def move_value(move):
             _, end_pos = move
             end_piece = state["board"][end_pos[0]][end_pos[1]]
-            return 10 if end_piece != '.' else 0  
+            if end_piece == '.':
+                return 0
+            return piece_values.get(end_piece[1], 0)
         return sorted(moves, key=move_value, reverse=True)
 
     # Minimax with Alpha-Beta pruning
@@ -458,44 +525,74 @@ class MiniChess:
                         break  # Alpha cutoff
             return value, alpha, beta
 
-    def get_best_move(self, state, max_depth, time_limit):
+    def get_best_move(self, state, time_limit):
         start_time = time.time()
         best_move = None
         best_value = -math.inf if state["turn"] == "white" else math.inf
-
         moves = self.order_moves(state, self.valid_moves(state))
+        if not moves:
+            return None
 
-        for move in moves:
-            if time.time() - start_time > time_limit:
-                break
-            new_state = copy.deepcopy(state)
-            self.make_move(new_state, move, is_ai_evaluation=True)
-            
-            # Call minimax with alpha and beta for Alpha-Beta pruning
-            value, alpha, beta = self.minimax(new_state, max_depth - 1, state["turn"] == "black", -math.inf, math.inf, start_time, time_limit)
+        max_depth = 4  # Set a maximum depth limit
+        depth = 1
+        time_remaining = time_limit  # Track remaining time dynamically
+        while time_remaining > 0 and depth <= max_depth:  # Exit if no time left or max depth reached
+            depth_start_time = time.time()
+            self.log(f"Searching at depth {depth}...")
+            current_best_move = None
+            current_best_value = -math.inf if state["turn"] == "white" else math.inf
 
-            if state["turn"] == "white" and value > best_value:
-                best_value = value
-                best_move = move
-            elif state["turn"] == "black" and value < best_value:
-                best_value = value
-                best_move = move
+            for move in moves:
+                # Check time before processing each move
+                if time.time() - start_time > time_limit:
+                    break
 
-        # Log the final move chosen by the AI
-        if best_move:
-            time_taken = time.time() - start_time
-            self.log(f"AI chooses: {self.convert_to_notation(best_move[0])} to {self.convert_to_notation(best_move[1])}")
-            self.log(f"Time taken: {time_taken:.2f} seconds")
-            self.log(f"Final Heuristic Score: {self.evaluate_state(state)}")
-            
-            # Log Alpha-Beta score if Alpha-Beta pruning is enabled
-            if self.alpha_beta:
-                self.log(f"Final Alpha-Beta Score: Alpha={alpha}, Beta={beta}")
+                new_state = copy.deepcopy(state)
+                self.make_move(new_state, move, is_ai_evaluation=True)
+                value, alpha, beta = self.minimax(
+                    new_state, 
+                    depth - 1, 
+                    state["turn"] == "black", 
+                    -math.inf, 
+                    math.inf, 
+                    start_time, 
+                    time_limit
+                )
+
+                # Update best move for current depth
+                if state["turn"] == "white" and value > current_best_value:
+                    current_best_value = value
+                    current_best_move = move
+                elif state["turn"] == "black" and value < current_best_value:
+                    current_best_value = value
+                    current_best_move = move
+
+            # Update global best move if depth completed
+            if current_best_move:
+                best_move = current_best_move
+                best_value = current_best_value
+                depth += 1
             else:
-                self.log(f"Final Minimax Score: {best_value}")
+                break  # No time or no valid moves
+
+            # Calculate remaining time after this depth
+            elapsed = time.time() - start_time
+            time_remaining = time_limit - elapsed
+
+        # Final time check to enforce strict timeout
+        total_time = time.time() - start_time
+        if total_time > time_limit:
+            self.log("AI exceeded timeout! Forfeiting turn.")
+            return None
+
+        # Log results
+        if best_move:
+            self.log(f"Reached search depth: {depth-1}")
+            self.log(f"AI chooses: {self.convert_to_notation(best_move[0])} to {self.convert_to_notation(best_move[1])}")
+            self.log(f"Minimax/Alpha-Beta Search Score: {best_value}")
+            self.log(f"Time taken: {total_time:.2f} seconds")
 
         return best_move
-    
     """
     Main game loop handling player input and game progression
 
@@ -526,7 +623,6 @@ class MiniChess:
 
         self.log("\nWelcome to Mini Chess! Enter moves as 'B2 B3'. Type 'exit' to quit.")
 
-        ai_depth = 4
 
         while not self.game_over:
             current_player = self.current_game_state['turn']
@@ -534,11 +630,13 @@ class MiniChess:
 
             if is_ai_turn:
                 move_start_time = time.time()
-                move = self.get_best_move(self.current_game_state, ai_depth, self.timeout)
+                move = self.get_best_move(self.current_game_state, self.timeout)
                 move_time_taken = time.time() - move_start_time
 
                 if not move:
-                    self.log("No valid moves found. Game over.")
+                    self.log(f"{current_player} AI exceeded timeout! Automatic loss.")
+                    self.game_over = True
+                    self.result = f"{current_player} AI lost by timeout."
                     break
 
                 move_str = f"{self.convert_to_notation(move[0])} {self.convert_to_notation(move[1])}"
