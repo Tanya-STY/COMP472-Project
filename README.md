@@ -2,11 +2,16 @@
 #### Tanya So Tin Yan (40208954) - Section NN
 
 ## Description
-MiniChess is a simplified chess variant implemented in Python. It features a 5x5 board with a reduced set of pieces and rules. The game supports human vs. human gameplay and includes standard chess mechanics like piece movement, captures, pawn promotion, and king capture. Additionally, it implements draw conditions based on maximum turns or no captures in 10 consecutive turns.
+MiniChess is a simplified chess variant implemented in Python. It features a 5x5 board with a reduced set of pieces and rules. The game supports multiple play modes, including human vs. human, human vs. AI, AI vs. human, AI vs. AI. It includes standard chess mechanics like piece movement, captures, pawn promotion, and king capture. Additionally, it implements draw conditions based on maximum turns or no captures in 10 consecutive turns.
 
 The game logs all moves and board states to a trace file for review and analysis.
 
 ## Features
+- **4 Play Modes:**
+    - Human vs. Human (H-H)
+    - Human vs. AI (H-AI)
+    - AI vs. Human (AI-H)
+    - AI vs. AI (AI-AI)
 - **5x5 Chess Board**: Smaller board with simplified piece setup.
 - **Piece Movement**: Supports King, Queen, Bishop, Knight, and Pawn movements.
 - **Win Conditions**: King capture results in an immediate win.
@@ -14,7 +19,6 @@ The game logs all moves and board states to a trace file for review and analysis
   - Maximum turns reached (configurable).
   - No captures in 10 consecutive turns.
 - **Logging**: Saves game trace to a file for review.
-- **Human vs. Human**: Two-player gameplay with alternating turns.
 
 
 ## How to Run the Project
@@ -34,23 +38,30 @@ The game logs all moves and board states to a trace file for review and analysis
    python mini_chess.py
    ```
 
-3. **Command-Line Arguments**:
-   - `--playmode`: Specify the play mode (default: `H-H` for human vs. human).
-     - Supported modes: `H-H` (Human vs. Human).
-     ```bash
-     python mini_chess.py --playmode H-H 
-     ```
+3. **Gameplay Setup**:
+   - The program will prompt for player types
+   - Enter the maximum number of turns
+   - If AI is selected:
+     - Set AI move timeout
+     - Choose whether to enable alpha-beta pruning
+     - Select the heuristic for AI player(s)
 
 4. **Gameplay**:
    - Enter moves in the format `A1 B2` (start and end positions).
+   - AI will automatically generate moves.
    - Type `exit` to quit the game at any time.
    - The game will display the board and prompt players for their moves.
 
 5. **Game Trace**:
-   - The game saves a trace file named `gameTrace-HH-{n}.txt` in the same directory.
+   - The game saves a trace file named `gameTrace-<b>-<t>-<m>.txt` in the same directory.
+     - **b**: false if **alpha-beta** is off or true if **alpha-beta** is active
+     - **t**: value of the timeout in seconds
+     - **m**: max number of turns
+       
    - The file contains:
+     - Game settings
      - Initial board setup.
-     - Move-by-move details (player, turn number, action).
+     - Move-by-move details (player, turn number, action, states explored, etc.).
      - Final board state and game result.
 
 ## Key Classes and Functions
@@ -90,8 +101,8 @@ The game logs all moves and board states to a trace file for review and analysis
 ![image](https://github.com/user-attachments/assets/e63ca7b8-f7b5-49f5-a8fb-ffd6611ae8aa)
 
 ## Notes
-- The game is designed for simplicity and does not include advanced chess rules.
-- Only human vs. human mode is currently implemented.
+- The AI uses heuristics to determine the best moves
+- The game now supports all four play modes
 
 ---
 
