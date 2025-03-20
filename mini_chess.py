@@ -243,19 +243,26 @@ class MiniChess:
             if target_piece != '.':
                 self.log(f"Capturing {target_piece} at {self.convert_to_notation(end)}")
 
-        # Check if the move captures the opponent's king (only during actual gameplay, not AI evaluation)
-        if not is_ai_evaluation and target_piece != '.':  # Target square is not empty
-            if target_piece[1] == 'K':  # Target piece is a king
+        # Make the move FIRST
+        game_state["board"][start_row][start_col] = '.'
+        game_state["board"][end_row][end_col] = piece
+
+        # Check if the move captured the opponent's king
+        if not is_ai_evaluation and target_piece != '.':
+            if target_piece[1] == 'K':
                 opponent_color = 'b' if game_state["turn"] == 'white' else 'w'
-                if target_piece[0] == opponent_color:  # Target piece is the opponent's king
+                if target_piece[0] == opponent_color:
                     self.log(f"Game over! {game_state['turn'].capitalize()} wins by capturing the king.")
                     self.game_over = True
                     self.result = f"{game_state['turn'].capitalize()} wins by capturing the king in {self.turn_count + 1} turns."
+                    
+                    # Still process promotions and turn toggle for accurate board state
+                    if piece[1] == 'p':
+                        if (piece[0] == 'w' and end_row == 0) or (piece[0] == 'b' and end_row == 4):
+                            game_state["board"][end_row][end_col] = piece[0] + 'Q'
+                    
+                    game_state["turn"] = 'black' if game_state["turn"] == 'white' else 'white'
                     return game_state
-
-        # Make the move
-        game_state["board"][start_row][start_col] = '.'
-        game_state["board"][end_row][end_col] = piece
 
         # Pawn promotion
         if piece[1] == 'p':
@@ -265,31 +272,24 @@ class MiniChess:
         # Toggle turn
         game_state["turn"] = 'black' if game_state["turn"] == 'white' else 'white'
 
-        # Increment turn count and update piece count history after Black's move (only during actual game progression)
-        if not is_ai_evaluation and game_state["turn"] == 'white':  # Black just moved
+        # Update turn count after Black's move
+        if not is_ai_evaluation and game_state["turn"] == 'white':
             self.turn_count += 1
             current_count = self.count_pieces(game_state["board"])
             self.piece_count_history.append(current_count)
 
-            # Debugging: Print turn count and piece count history
-            self.log(f"Turn Count: {self.turn_count}, Piece Count History: {self.piece_count_history}")
-
-            # Check max turns
             if self.turn_count >= self.maxturns:
                 self.game_over = True
                 self.result = "Draw by reaching max turns"
-                return game_state
-
-            # Check 10-turn draw (only after 10 full turns)
-            if self.turn_count >= 10:
+            
+            elif self.turn_count >= 10:
                 last_ten = self.piece_count_history[-10:]
                 if all(x == last_ten[0] for x in last_ten):
                     self.game_over = True
                     self.result = "Draw by 10 turns with no captures"
-                    return game_state
 
         return game_state
-    
+        
     """
     Parse the input string and modify it into board coordinates
 
@@ -324,23 +324,6 @@ class MiniChess:
         row, col = pos
         return f"{chr(col + ord('A'))}{5 - row}"
     
-    """
-    Write the board state to a file
-
-    Args:
-        - file: file object | File object to write to
-        - game_state: dictionary | Dictionary representing the current game state
-    Returns:
-        - None
-    """
-    def write_board_to_file(self, file, game_state):
-        file.write("\n                  A     B    C    D    E\n")
-        file.write("                +----+----+----+----+----+\n")
-        for i, row in enumerate(game_state["board"], start=1):
-            row_str = f"              {6 - i} | " + " | ".join(piece if piece != '.' else '  ' for piece in row) + " | " + f"{6 - i}\n"
-            file.write(row_str)
-            file.write("                +----+----+----+----+----+\n")
-        file.write("                  A     B    C    D    E\n")
 
 
     """
@@ -356,7 +339,7 @@ class MiniChess:
         base_name = os.path.join(base_dir, "gameTrace")
         index = 1
         while True:
-            filename = f"{base_name}-{index}.txt"
+            filename = f"{base_name}{index}-{alpha_beta}-{timeout}-{maxturns}.txt"
             if not os.path.exists(filename):
                 self.log(f"\nCreating game trace file: {filename}\n")
                 return filename
@@ -508,9 +491,8 @@ class MiniChess:
         if maximizing:
             value = -math.inf
             for move in moves:
-                new_state = copy.deepcopy(state)
-                self.make_move(new_state, move, is_ai_evaluation=True)
-                eval_score, new_alpha, new_beta = self.minimax(new_state, current_depth + 1, max_depth, False, alpha, beta, start_time, time_limit)
+                new_state = self.make_move(copy.deepcopy(state), move, is_ai_evaluation=True)
+                eval_score, _, _ = self.minimax(new_state, current_depth + 1, max_depth, False, alpha, beta, start_time, time_limit)
                 value = max(value, eval_score)
                 if self.alpha_beta:
                     alpha = max(alpha, value)
@@ -544,7 +526,7 @@ class MiniChess:
         if not moves:
             return None
 
-        max_depth = 4  # Maximum allowed depth
+        max_depth = 3  # Maximum allowed depth
         current_max_depth = 1  # Start with depth 1
         time_remaining = time_limit
 
